@@ -117,10 +117,6 @@
   <script>
     const lerp = (a, b, t) => a + (b - a) * t;
     
-    // 🖼️ CARGA DE IMAGEN DEL JUGADOR
-    const playerImg = new Image();
-    playerImg.src = 'coche.png'; // Asegúrate de que el archivo se llama así en GitHub
-
     // 🔹 AUDIO
     const audio = {
       ctx: null, engine: { osc: null, gain: null, filter: null, active: false },
@@ -233,9 +229,8 @@
     function resize() {
       canvas.width = window.innerWidth; canvas.height = window.innerHeight;
       const s = Math.min(canvas.width/400, 1); 
-      state.player.w = 42*s; // Un poco más ancho para que se vea bien el coche
-      state.player.h = state.player.w * 1.6; 
-      state.player.y = canvas.height - 140;
+      state.player.w = 36*s; state.player.h = state.player.w*1.65;
+      state.player.y = canvas.height - 130;
       state.baseRoadW = Math.min(canvas.width*0.92, 480);
       state.targetRoadW = state.baseRoadW; state.currentRoadW = state.baseRoadW;
       state.currentRoadX = (canvas.width - state.currentRoadW) / 2;
@@ -274,7 +269,6 @@
     });
 
     function drawF1(x,y,w,h,col) {
-      // Función para dibujar coches enemigos (sigue siendo código)
       ctx.save(); ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(x+3,y+4,w,h);
       ctx.fillStyle='#111'; ctx.fillRect(x-4,y+12,5,14); ctx.fillRect(x+w-1,y+12,5,14); ctx.fillRect(x-4,y+h-26,8,22); ctx.fillRect(x+w-4,y+h-26,8,22);
       ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(x+w*0.4,y); ctx.lineTo(x+w*0.6,y); ctx.lineTo(x+w*0.7,y+h*0.25); ctx.lineTo(x+w,y+h*0.35); ctx.lineTo(x+w,y+h*0.75); ctx.lineTo(x+w*0.7,y+h); ctx.lineTo(x+w*0.3,y+h); ctx.lineTo(x,y+h*0.75); ctx.lineTo(x,y+h*0.35); ctx.lineTo(x+w*0.3,y+h*0.25); ctx.fill();
@@ -486,20 +480,8 @@
         ctx.clearRect(0,0,canvas.width,canvas.height); 
         drawEnv();
         drawSnow();
-        
-        // Dibujar enemigos
         state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c));
-        
-        // Dibujar jugador con IMAGEN
-        if(!state.exploding) {
-          if (playerImg.complete) {
-            ctx.drawImage(playerImg, state.player.x, state.player.y, state.player.w, state.player.h);
-          } else {
-            // Fallback si la imagen no cargó aún
-            drawF1(state.player.x, state.player.y, state.player.w, state.player.h, state.player.color);
-          }
-        }
-        
+        if(!state.exploding) drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color);
         if(state.particles.length>0) {
           for(let i=state.particles.length-1;i>=0;i--) { let p=state.particles[i]; p.x+=p.vx; p.y+=p.vy; p.life-=0.018; if(p.life<=0) state.particles.splice(i,1); }
           state.particles.forEach(p=>{ ctx.globalAlpha=p.life; ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.s,0,Math.PI*2); ctx.fill(); }); ctx.globalAlpha=1;
