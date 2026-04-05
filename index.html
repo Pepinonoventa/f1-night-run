@@ -10,16 +10,10 @@
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body {
-      width:100%; height:100%; overflow:hidden; 
-      background: #000000; /* Fondo negro puro */
-      touch-action:none;
-      -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; 
-      font-family:system-ui; color:#fff;
+      width:100%; height:100%; overflow:hidden; background:#000000; touch-action:none;
+      -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; font-family:system-ui; color:#fff;
     }
-    canvas { 
-      display:block; width:100%; height:100%; 
-      touch-action:none; 
-    }
+    canvas { display:block; width:100%; height:100%; }
     
     #ui {
       position:absolute; top:env(safe-area-inset-top, 28px); left:0; right:0; text-align:center;
@@ -55,6 +49,22 @@
       padding:14px; width:78%; max-width:260px; text-align:center; z-index:20; box-shadow:0 8px 20px rgba(0,0,0,0.8);
     }
     .panel h2 { margin-bottom:5px; color:#ff3333; font-size:15px; }
+
+    /* Nuevo Panel de Advertencia */
+    #warningPanel {
+      position:absolute; top:40%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(255, 50, 0, 0.9); border:3px solid #fff; border-radius:15px;
+      padding:15px 25px; text-align:center; z-index:15; box-shadow:0 0 20px #ff0000;
+      animation: shake 0.5s infinite; display:none;
+    }
+    #warningPanel h2 { color:#fff; font-size:22px; margin:0; text-transform:uppercase; }
+    #warningPanel p { color:#fff; font-size:14px; margin-top:5px; font-weight:bold; }
+    @keyframes shake {
+      0% { transform:translate(-50%,-50%) rotate(0deg); }
+      25% { transform:translate(-52%,-50%) rotate(-3deg); }
+      75% { transform:translate(-48%,-50%) rotate(3deg); }
+      100% { transform:translate(-50%,-50%) rotate(0deg); }
+    }
   </style>
 </head>
 <body>
@@ -78,6 +88,13 @@
       <button id="restartBtn" class="btn">🔄 REINICIAR</button>
     </div>
   </div>
+
+  <!-- Panel de Advertencia de Estrechamiento -->
+  <div id="warningPanel">
+    <h2>⚠️ ATENCIÓN ⚠️</h2>
+    <p>¡CARRETERA ESTRECHA!</p>
+  </div>
+
   <canvas id="gameCanvas"></canvas>
 
   <script>
@@ -148,11 +165,35 @@
       playCrash() {
         if(!this.ctx) return; const o=this.ctx.createOscillator(), g=this.ctx.createGain(); o.connect(g); g.connect(this.ctx.destination); const t=this.ctx.currentTime;
         try { o.type='sawtooth'; o.frequency.setValueAtTime(100,t); o.frequency.exponentialRampToValueAtTime(20,t+0.5); g.gain.setValueAtTime(0.25,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.5); o.start(t); o.stop(t+0.5); } catch(e){}
+      },
+      // 🔊 NUEVO: Sonido de Sirena para advertencia
+      playWarningSiren() {
+        if(!this.ctx) return; const t=this.ctx.currentTime;
+        try {
+          // Tono 1 sube y baja
+          const o1=this.ctx.createOscillator(); const g1=this.ctx.createGain();
+          o1.type='sawtooth'; o1.connect(g1); g1.connect(this.ctx.destination);
+          o1.frequency.setValueAtTime(600, t); 
+          o1.frequency.linearRampToValueAtTime(900, t+0.4);
+          o1.frequency.linearRampToValueAtTime(600, t+0.8);
+          g1.gain.setValueAtTime(0.15, t); g1.gain.linearRampToValueAtTime(0, t+1);
+          o1.start(t); o1.stop(t+1);
+          
+          // Tono 2 más agudo
+          const o2=this.ctx.createOscillator(); const g2=this.ctx.createGain();
+          o2.type='square'; o2.connect(g2); g2.connect(this.ctx.destination);
+          o2.frequency.setValueAtTime(1200, t); 
+          o2.frequency.linearRampToValueAtTime(1500, t+0.4);
+          o2.frequency.linearRampToValueAtTime(1200, t+0.8);
+          g2.gain.setValueAtTime(0.08, t); g2.gain.linearRampToValueAtTime(0, t+1);
+          o2.start(t); o2.stop(t+1);
+        } catch(e){}
       }
     };
 
     // 🔹 UI & ESTADO
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+    const warningPanel = document.getElementById('warningPanel');
     const els = {
       startBtn: document.getElementById('startBtn'), restartBtn: document.getElementById('restartBtn'),
       score: document.getElementById('score'), lastScore: document.getElementById('lastScore'), highScore: document.getElementById('highScore'),
@@ -168,7 +209,8 @@
       player:{x:0,y:0,w:0,h:0,vx:0,targetX:0,color:'#ff0000'}, 
       obstacles:[], particles:[],
       nightMode:false, nightStart:0, lastNightDist:0,
-      narrowed:false, narrowStart:0, lastNarrowDist:0, 
+      narrowed:false, narrowStart:0, lastNarrowDist:0,
+      warningNarrow:false, warningNarrowEnd:0, // Nueva lógica de advertencia
       iceMode:false, iceStart:0, lastIceDist:0,
       baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0
     };
@@ -218,22 +260,29 @@
 
     function drawEnv() {
       const rw=state.currentRoadW, rx=state.currentRoadX;
-      // Fondo base
-      ctx.fillStyle=state.nightMode?'#111111':'#2d8a35'; // Gris claro en noche para contraste
+      
+      // 🌱 Césped
+      ctx.fillStyle=state.nightMode?(state.iceMode?'#050a10':'#0a0a0a'):(state.iceMode?'#0a1520':'#2d8a35'); 
       ctx.fillRect(0,0,canvas.width,canvas.height);
       
-      // Asfalto
-      ctx.fillStyle=state.nightMode?'#2a2a2a':'#333'; 
+      // 🛣️ Asfalto (CAMBIO DE COLOR AQUÍ)
+      let roadColor = '#333';
+      if (state.nightMode) {
+        roadColor = state.iceMode ? '#15202a' : '#1a1a1a'; // Gris azulado oscuro
+      } else {
+        roadColor = state.iceMode ? '#6c9ebf' : '#333'; // AZUL HIELO CLARO
+      }
+      ctx.fillStyle = roadColor;
       ctx.fillRect(rx,0,rw,canvas.height);
       
-      // Kerbs
+      // 🏁 Kerbs
       const kH=22; for(let i=-kH; i<canvas.height+kH; i+=kH) { 
         let y=i+(state.roadOffset%kH); 
         ctx.fillStyle=(Math.floor((y+state.roadOffset)/kH)%2!==0)?'#cc0000':'#ffffff'; 
         ctx.fillRect(rx-7,y,7,kH); ctx.fillRect(rx+rw,y,7,kH); 
       }
       // Línea central
-      ctx.strokeStyle=state.nightMode?'#555':'#fff'; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
+      ctx.strokeStyle=state.nightMode?'#444':'#fff'; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
       ctx.beginPath(); ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,canvas.height); ctx.stroke(); ctx.setLineDash([]);
       
       if(state.narrowed) {
@@ -241,39 +290,25 @@
         ctx.beginPath(); ctx.moveTo(rx+5,0); ctx.lineTo(rx+5,canvas.height); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(rx+rw-5,0); ctx.lineTo(rx+rw-5,canvas.height); ctx.stroke(); ctx.setLineDash([]);
       }
-      if(state.iceMode) {
-        ctx.fillStyle='rgba(180,220,255,0.1)'; ctx.fillRect(rx,0,rw,canvas.height);
-      }
     }
 
-    // 💡 LUCES RETRO (MÉTODO MÁSCARA VECTORIAL - 100% ESTABLE EN iOS)
+    // 💡 LUCES RETRO (MÁSCARA VECTORIAL)
     function drawNight() {
       if(!state.nightMode) return; 
-      
-      // 1. Dibujar una caja negra que cubre TODA la pantalla, PERO con un agujero en forma de cono
       ctx.save();
       ctx.beginPath();
-      
-      // A. El área negra (Toda la pantalla)
       ctx.rect(0, 0, canvas.width, canvas.height);
-      
-      // B. El agujero (El cono de luz)
       const cx = state.player.x + state.player.w/2;
       const cy = state.player.y + 5;
       const len = 320; 
       const width = state.currentRoadW * 0.85; 
-      
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx - width/2, cy - len);
       ctx.lineTo(cx + width/2, cy - len);
       ctx.closePath();
-      
-      // Fill 'evenodd' rellena el rectángulo pero DEJA VACÍO el triángulo del cono
       ctx.fillStyle = '#000000';
       ctx.fill('evenodd');
       ctx.restore();
-
-      // 2. Dibujar el brillo de la bombilla ENCIMA del juego (dentro del cono)
       let glow = ctx.createRadialGradient(cx, cy, 5, cx, cy, 40);
       glow.addColorStop(0, 'rgba(255,255,255,0.6)');
       glow.addColorStop(1, 'rgba(255,255,255,0)');
@@ -292,14 +327,40 @@
 
         const d = Math.floor(state.score);
         
+        // 🌙 MODO NOCHE (2000m, dura 20s)
         if(!state.nightMode && d>=state.lastNightDist+2000) { state.nightMode=true; state.nightStart=Date.now(); state.lastNightDist=d; els.nightBadge.style.display='inline-block'; }
         if(state.nightMode && Date.now()-state.nightStart>20000) { state.nightMode=false; els.nightBadge.style.display='none'; }
         
-        if(!state.narrowed && d>=state.lastNarrowDist+3000) { state.narrowed=true; state.narrowStart=Date.now(); state.lastNarrowDist=d; state.targetRoadW=state.baseRoadW*0.60; els.narrowBadge.style.display='inline-block'; }
-        if(state.narrowed && Date.now()-state.narrowStart>30000) { state.narrowed=false; state.targetRoadW=state.baseRoadW; els.narrowBadge.style.display='none'; }
-
+        // 🧊 MODO HIELO (4000m, dura 15s)
         if(!state.iceMode && d>=state.lastIceDist+4000) { state.iceMode=true; state.iceStart=Date.now(); state.lastIceDist=d; els.iceBadge.style.display='inline-block'; }
         if(state.iceMode && Date.now()-state.iceStart>15000) { state.iceMode=false; els.iceBadge.style.display='none'; }
+
+        // 🚧 LÓGICA DE ESTRECHAMIENTO CON AVISO
+        // 1. Activar Advertencia (2 segundos antes de estrechar)
+        if(!state.warningNarrow && !state.narrowed && d>=state.lastNarrowDist+3000) {
+          state.warningNarrow = true;
+          state.warningNarrowEnd = Date.now() + 2000; // Suena la alarma
+          audio.playWarningSiren();
+          warningPanel.style.display = 'block'; // Muestra cartel
+        }
+
+        // 2. Activar Estrechamiento (cuando pasan los 2 seg)
+        if(state.warningNarrow && Date.now() >= state.warningNarrowEnd) {
+          state.warningNarrow = false;
+          state.narrowed = true;
+          state.narrowStart = Date.now();
+          state.targetRoadW = state.baseRoadW * 0.60;
+          els.narrowBadge.style.display = 'inline-block';
+          warningPanel.style.display = 'none'; // Oculta cartel
+        }
+
+        // 3. Terminar Estrechamiento (dura 30s)
+        if(state.narrowed && Date.now()-state.narrowStart>30000) { 
+          state.narrowed=false; 
+          state.targetRoadW=state.baseRoadW; 
+          els.narrowBadge.style.display='none';
+          state.lastNarrowDist = d; // Resetea distancia para el próximo ciclo
+        }
 
         state.currentRoadW = lerp(state.currentRoadW, state.targetRoadW, 0.06);
         state.currentRoadX = (canvas.width - state.currentRoadW)/2;
@@ -366,6 +427,7 @@
       audio.stopMusic(); audio.playCrash();
       if(navigator.vibrate) navigator.vibrate([150,50,120]);
       createExplosion(state.player.x+state.player.w/2, state.player.y+state.player.h/2);
+      warningPanel.style.display = 'none'; // Asegurar que se oculta al morir
       setTimeout(gameOver, 1000);
     }
 
@@ -377,6 +439,7 @@
       if(d > state.highScore) { state.highScore=d; localStorage.setItem('f1_highscore',d); els.highScore.textContent=`🏆 ${d}m`; }
       els.finalScore.textContent = `Distancia: ${d} m`;
       els.gameOver.classList.remove('hidden'); els.title.classList.add('hidden');
+      warningPanel.style.display = 'none';
     }
 
     function draw() {
@@ -400,11 +463,13 @@
       state.running=true; state.exploding=false; 
       state.nightMode=false; state.lastNightDist=0; 
       state.narrowed=false; state.lastNarrowDist=0; 
+      state.warningNarrow=false;
       state.iceMode=false; state.lastIceDist=0;
       state.targetRoadW=state.baseRoadW; state.currentRoadW=state.baseRoadW;
       els.nightBadge.style.display='none'; els.narrowBadge.style.display='none'; els.iceBadge.style.display='none';
       els.score.textContent='0 m';
       els.gameOver.classList.add('hidden'); els.title.classList.remove('hidden'); els.startBtn.classList.add('hidden');
+      warningPanel.style.display = 'none';
       resize();
       state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2;
       state.player.targetX = state.player.x;
