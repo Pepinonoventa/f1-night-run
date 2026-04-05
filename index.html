@@ -50,13 +50,13 @@
     .panel h2 { margin-bottom:5px; color:#ff3333; font-size:15px; }
 
     #warningPanel {
-      position:absolute; top:40%; left:50%; transform:translate(-50%,-50%);
+      position:absolute; top:38%; left:50%; transform:translate(-50%,-50%);
       background:rgba(255, 50, 0, 0.9); border:3px solid #fff; border-radius:15px;
-      padding:15px 25px; text-align:center; z-index:15; box-shadow:0 0 20px #ff0000;
-      animation: shake 0.5s infinite; display:none;
+      padding:12px 20px; text-align:center; z-index:15; box-shadow:0 0 20px #ff0000;
+      animation: shake 0.4s infinite; display:none;
     }
-    #warningPanel h2 { color:#fff; font-size:22px; margin:0; text-transform:uppercase; }
-    #warningPanel p { color:#fff; font-size:14px; margin-top:5px; font-weight:bold; }
+    #warningPanel h2 { color:#fff; font-size:18px; margin:0; text-transform:uppercase; }
+    #warningPanel p { color:#fff; font-size:12px; margin-top:4px; font-weight:bold; }
     @keyframes shake {
       0% { transform:translate(-50%,-50%) rotate(0deg); }
       25% { transform:translate(-52%,-50%) rotate(-3deg); }
@@ -181,6 +181,7 @@
     // 🔹 UI & ESTADO
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
     const warningPanel = document.getElementById('warningPanel');
+    
     const els = {
       startBtn: document.getElementById('startBtn'), restartBtn: document.getElementById('restartBtn'),
       score: document.getElementById('score'), lastScore: document.getElementById('lastScore'), highScore: document.getElementById('highScore'),
@@ -194,7 +195,7 @@
       highScore: parseInt(localStorage.getItem('f1_highscore')) || 0, 
       baseSpeed: 6.5, speed: 6.5, roadOffset: 0,
       player:{x:0,y:0,w:0,h:0,vx:0,targetX:0,color:'#ff0000'}, 
-      obstacles:[], particles:[],
+      obstacles:[], particles:[], snow:[],
       nightMode:false, nightStart:0, lastNightDist:0,
       narrowed:false, narrowStart:0, lastNarrowDist:0,
       warningNarrow:false, warningNarrowEnd:0,
@@ -245,21 +246,20 @@
 
     function drawEnv() {
       const rw=state.currentRoadW, rx=state.currentRoadX;
-      ctx.fillStyle=state.nightMode?(state.iceMode?'#050a10':'#0a0a0a'):(state.iceMode?'#0a1520':'#2d8a35'); 
-      ctx.fillRect(0,0,canvas.width,canvas.height);
+      let grass='#2d8a35', road='#333', kerb1='#cc0000', kerb2='#ffffff', center='#fff';
       
-      let roadColor = '#333';
-      if (state.nightMode) roadColor = state.iceMode ? '#15202a' : '#1a1a1a';
-      else roadColor = state.iceMode ? '#6c9ebf' : '#333'; // 🧊 Azul hielo
-      ctx.fillStyle = roadColor;
-      ctx.fillRect(rx,0,rw,canvas.height);
+      if(state.iceMode) { grass='#0a1520'; road='#6c9ebf'; kerb1='#00ccff'; kerb2='#ffffff'; center='#00ccff'; }
+      else if(state.nightMode) { grass='#0a0a0a'; road='#1a1a1a'; kerb1='#cc0000'; kerb2='#ffffff'; center='#444'; }
+
+      ctx.fillStyle=grass; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle=road; ctx.fillRect(rx,0,rw,canvas.height);
       
       const kH=22; for(let i=-kH; i<canvas.height+kH; i+=kH) { 
         let y=i+(state.roadOffset%kH); 
-        ctx.fillStyle=(Math.floor((y+state.roadOffset)/kH)%2!==0)?'#cc0000':'#ffffff'; 
+        ctx.fillStyle=(Math.floor((y+state.roadOffset)/kH)%2!==0)?kerb1:kerb2; 
         ctx.fillRect(rx-7,y,7,kH); ctx.fillRect(rx+rw,y,7,kH); 
       }
-      ctx.strokeStyle=state.nightMode?'#444':'#fff'; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
+      ctx.strokeStyle=center; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
       ctx.beginPath(); ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,canvas.height); ctx.stroke(); ctx.setLineDash([]);
       
       if(state.narrowed) {
@@ -292,6 +292,14 @@
       ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI*2); ctx.fill();
     }
 
+    function drawSnow() {
+      if(!state.iceMode) return;
+      ctx.fillStyle='rgba(255,255,255,0.8)';
+      state.snow.forEach(s => {
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
+      });
+    }
+
     function createExplosion(x,y) { for(let i=0;i<60;i++) state.particles.push({x,y, vx:(Math.random()-0.5)*15, vy:(Math.random()-0.5)*15, life:1, c:Math.random()>0.5?'#ffaa00':'#ff3300', s:Math.random()*4.5+2}); }
 
     // 🔹 LÓGICA PRINCIPAL
@@ -307,7 +315,7 @@
         if(state.nightMode && Date.now()-state.nightStart>20000) { state.nightMode=false; els.nightBadge.style.display='none'; }
         
         if(!state.iceMode && d>=state.lastIceDist+4000) { state.iceMode=true; state.iceStart=Date.now(); state.lastIceDist=d; els.iceBadge.style.display='inline-block'; }
-        if(state.iceMode && Date.now()-state.iceStart>15000) { state.iceMode=false; els.iceBadge.style.display='none'; }
+        if(state.iceMode && Date.now()-state.iceStart>15000) { state.iceMode=false; els.iceBadge.style.display='none'; state.snow=[]; }
 
         if(!state.warningNarrow && !state.narrowed && d>=state.lastNarrowDist+3000) {
           state.warningNarrow = true;
@@ -349,7 +357,15 @@
           state.player.x = state.currentRoadX + state.currentRoadW - state.player.w; state.player.vx *= -0.4; 
         }
 
-        // 🚗 Spawn tráfico
+        if(state.iceMode && Math.random() < 0.4 && state.snow.length < 60) {
+          state.snow.push({ x: Math.random()*canvas.width, y: -5, speed: 2+Math.random()*3, size: 1+Math.random()*2, drift: (Math.random()-0.5)*1 });
+        }
+        for(let i=state.snow.length-1; i>=0; i--) {
+          let s = state.snow[i]; s.y += s.speed; s.x += s.drift + Math.sin(Date.now()/200)*0.5;
+          if(s.y > canvas.height) state.snow.splice(i,1);
+        }
+
+        // 🚗 Spawn Tráfico (CORREGIDO)
         let lastY = state.obstacles.length > 0 ? state.obstacles[state.obstacles.length-1].y : 250;
         let spawnRate = 0.038 + (state.score / 18000); 
         if(state.nightMode) spawnRate += 0.025;
@@ -371,10 +387,15 @@
               placedX.push(px);
               let isFast = Math.random() < 0.18;
               
-              // 📈 DIFICULTAD PROGRESIVA: +15% velocidad enemigos cada 200m
-              let speedMultiplier = 1 + Math.floor(d / 200) * 0.15;
-              let baseFactor = isFast ? 0.12 : 0.5;
+              // 📈 Dificultad progresiva CORREGIDA
+              // Se usa un cap (Math.min) para evitar que la velocidad relativa supere la del jugador
+              // y cause que los enemigos salgan disparados hacia arriba bloqueando el juego.
+              let speedMultiplier = Math.min(1.8, 1 + Math.floor(d / 200) * 0.12);
+              let baseFactor = isFast ? 0.15 : 0.55;
               let relSpd = state.speed * baseFactor * speedMultiplier;
+              
+              // Garantía física: siempre bajan hacia el jugador
+              if (relSpd > state.speed * 0.85) relSpd = state.speed * 0.85;
 
               let col = isFast ? '#ff2200' : ['#00d2be','#061954','#ff8000','#ff87bc','#0090ff','#33ff33','#cccccc'][Math.floor(Math.random()*7)];
               state.obstacles.push({ x:px, y:-state.player.h-50-(c*60), w:state.player.w, h:state.player.h, speed:relSpd, c:col, passed:false });
@@ -385,10 +406,13 @@
         for(let i=state.obstacles.length-1; i>=0; i--) {
           let o=state.obstacles[i]; 
           o.y += state.speed - o.speed;
+          
+          // Eliminación segura (por si acaso)
+          if (o.y > canvas.height + 150 || o.y < -300) { state.obstacles.splice(i, 1); continue; }
+
           let p=state.player, m=4;
           if(p.x+m<o.x+o.w-m && p.x+p.w-m>o.x+m && p.y+m<o.y+o.h-m && p.y+p.h-m>o.y+m) { triggerCrash(); return; }
           if(state.running && !o.passed && o.y>p.y+p.h) { o.passed=true; state.score+=15; audio.playPass(); }
-          if(o.y>canvas.height+100) state.obstacles.splice(i,1);
         }
         if(state.running) { state.score+=0.06; els.score.textContent=`${Math.floor(state.score)} m`; }
       } catch(e) { console.warn(e); }
@@ -418,6 +442,7 @@
       try {
         ctx.clearRect(0,0,canvas.width,canvas.height); 
         drawEnv();
+        drawSnow();
         state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c));
         if(!state.exploding) drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color);
         if(state.particles.length>0) {
@@ -431,21 +456,18 @@
     function loop() { update(); draw(); if(state.running || state.exploding) requestAnimationFrame(loop); }
     function startGame() {
       audio.init(); audio.startEngine(); audio.startMusic();
-      state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[];
+      state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.snow=[];
       state.running=true; state.exploding=false; 
-      state.nightMode=false; state.lastNightDist=0; 
-      state.narrowed=false; state.lastNarrowDist=0; 
-      state.warningNarrow=false;
-      state.iceMode=false; state.lastIceDist=0;
+      state.nightMode=false; state.lastNightDist=0; els.nightBadge.style.display='none';
+      state.narrowed=false; state.lastNarrowDist=0; state.warningNarrow=false; els.narrowBadge.style.display='none';
+      state.iceMode=false; state.lastIceDist=0; els.iceBadge.style.display='none';
       state.targetRoadW=state.baseRoadW; state.currentRoadW=state.baseRoadW;
-      els.nightBadge.style.display='none'; els.narrowBadge.style.display='none'; els.iceBadge.style.display='none';
       els.score.textContent='0 m';
       els.gameOver.classList.add('hidden'); els.title.classList.remove('hidden'); els.startBtn.classList.add('hidden');
       warningPanel.style.display = 'none';
       resize();
       state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2;
-      state.player.targetX = state.player.x;
-      state.player.vx = 0;
+      state.player.targetX = state.player.x; state.player.vx = 0;
       loop();
     }
 
