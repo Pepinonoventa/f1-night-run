@@ -9,10 +9,17 @@
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body {
-      width:100%; height:100%; overflow:hidden; background:#000; touch-action:none;
-      -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; font-family:system-ui; color:#fff;
+      width:100%; height:100%; overflow:hidden; 
+      background: #050505; /* Fondo negro puro para que las zonas oscuras se vean negras */
+      touch-action:none;
+      -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; 
+      font-family:system-ui; color:#fff;
     }
-    canvas { display:block; width:100%; height:100%; }
+    canvas { 
+      display:block; width:100%; height:100%; 
+      touch-action:none; 
+      /* Importante: Sin sombras ni bordes para que las luces funcionen en iOS */
+    }
     
     #ui {
       position:absolute; top:env(safe-area-inset-top, 28px); left:0; right:0; text-align:center;
@@ -22,7 +29,7 @@
     h1 { font-size:17px; font-weight:900; font-style:italic; margin-bottom:2px; color:#ff3333; letter-spacing:1px; }
     
     #scoreBoard {
-      background: rgba(0,0,0,0.8); padding: 4px 8px; border-radius: 8px;
+      background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 8px;
       display: inline-flex; gap: 4px; align-items: center; border: 1px solid #333; margin-bottom: 4px; font-size: 11px; flex-wrap: wrap; justify-content: center;
     }
     .badge {
@@ -44,7 +51,7 @@
     
     .panel {
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-      background:rgba(6,6,10,0.97); border:1px solid #333; border-radius:12px;
+      background:rgba(6,6,10,0.95); border:1px solid #333; border-radius:12px;
       padding:14px; width:78%; max-width:260px; text-align:center; z-index:20; box-shadow:0 8px 20px rgba(0,0,0,0.8);
     }
     .panel h2 { margin-bottom:5px; color:#ff3333; font-size:15px; }
@@ -212,11 +219,11 @@
     function drawEnv() {
       const rw=state.currentRoadW, rx=state.currentRoadX;
       // Fondo base (se verá solo a través de las luces)
-      ctx.fillStyle=state.nightMode?(state.iceMode?'#050a10':'#0a0a0a'):(state.iceMode?'#1a3a40':'#2d8a35'); 
+      ctx.fillStyle=state.nightMode?'#050505':'#2d8a35'; // Negro puro en noche para que resalte
       ctx.fillRect(0,0,canvas.width,canvas.height);
       
       // Asfalto
-      ctx.fillStyle=state.nightMode?(state.iceMode?'#101820':'#1a1a1a'):(state.iceMode?'#253540':'#333'); 
+      ctx.fillStyle=state.nightMode?'#1a1a1a':'#333'; 
       ctx.fillRect(rx,0,rw,canvas.height);
       
       // Kerbs
@@ -239,46 +246,40 @@
       }
     }
 
-    // 💡 EFECTO LUCES RETRO (Imagen ID: 2)
+    // 💡 LUCES RETRO (Método Máscara Infalible)
     function drawNight() {
       if(!state.nightMode) return; 
+      
+      // 1. Dibujar el cono de luz sobre el juego ya dibujado
+      // destination-in: Mantiene los píxeles del juego SOLO donde se superponen con la forma blanca
       ctx.save();
-      
-      // 1. Oscurecer todo el canvas
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // 2. Recortar el cono de luz (destination-out hace transparente el negro, revelando lo de abajo)
-      ctx.globalCompositeOperation = 'destination-out';
+      ctx.globalCompositeOperation = 'destination-in';
       
       const cx = state.player.x + state.player.w/2;
-      const cy = state.player.y + 10; // Origen de los faros
-      const len = 320; // Longitud del haz
-      const width = state.currentRoadW * 0.9; // Ancho del haz
+      const cy = state.player.y + 5;
+      const len = 320; 
+      const width = state.currentRoadW * 0.85; 
       
-      // Degradado para el cono (Sólido cerca del coche -> Transparente al final)
       let grad = ctx.createLinearGradient(cx, cy, cx, cy - len);
-      grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-      grad.addColorStop(0.2, 'rgba(255, 255, 255, 0.95)');
-      grad.addColorStop(0.7, 'rgba(255, 255, 255, 0.6)');
-      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      grad.addColorStop(0, 'rgba(255, 255, 255, 1)'); // Sólido cerca del coche
+      grad.addColorStop(0.6, 'rgba(255, 255, 255, 0.8)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)'); // Transparente al final
       
-      // Dibujar forma triangular del cono
-      ctx.beginPath();
-      ctx.moveTo(cx, cy); // Punta en el coche
-      ctx.lineTo(cx - width/2, cy - len); // Esquina izquierda
-      ctx.lineTo(cx + width/2, cy - len); // Esquina derecha
-      ctx.closePath();
       ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx - width/2, cy - len);
+      ctx.lineTo(cx + width/2, cy - len);
+      ctx.closePath();
       ctx.fill();
       
-      // Añadir "glow" alrededor de los faros
-      let glow = ctx.createRadialGradient(cx, cy, 5, cx, cy, 40);
-      glow.addColorStop(0, 'rgba(255,255,255,0.8)');
+      // Añadir un poco de brillo en la base (bombilla)
+      ctx.globalCompositeOperation = 'source-over'; // Volver a normal para dibujar encima
+      let glow = ctx.createRadialGradient(cx, cy, 2, cx, cy, 30);
+      glow.addColorStop(0, 'rgba(255,255,255,0.6)');
       glow.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, 30, 0, Math.PI*2); ctx.fill();
       
       ctx.restore();
     }
@@ -383,7 +384,8 @@
 
     function draw() {
       try {
-        ctx.clearRect(0,0,canvas.width,canvas.height); drawEnv();
+        ctx.clearRect(0,0,canvas.width,canvas.height); 
+        drawEnv();
         state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c));
         if(!state.exploding) drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color);
         if(state.particles.length>0) {
