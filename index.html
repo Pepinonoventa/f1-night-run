@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -50,7 +49,6 @@
     }
     .panel h2 { margin-bottom:5px; color:#ff3333; font-size:15px; }
 
-    /* Nuevo Panel de Advertencia */
     #warningPanel {
       position:absolute; top:40%; left:50%; transform:translate(-50%,-50%);
       background:rgba(255, 50, 0, 0.9); border:3px solid #fff; border-radius:15px;
@@ -89,7 +87,6 @@
     </div>
   </div>
 
-  <!-- Panel de Advertencia de Estrechamiento -->
   <div id="warningPanel">
     <h2>⚠️ ATENCIÓN ⚠️</h2>
     <p>¡CARRETERA ESTRECHA!</p>
@@ -166,27 +163,17 @@
         if(!this.ctx) return; const o=this.ctx.createOscillator(), g=this.ctx.createGain(); o.connect(g); g.connect(this.ctx.destination); const t=this.ctx.currentTime;
         try { o.type='sawtooth'; o.frequency.setValueAtTime(100,t); o.frequency.exponentialRampToValueAtTime(20,t+0.5); g.gain.setValueAtTime(0.25,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.5); o.start(t); o.stop(t+0.5); } catch(e){}
       },
-      // 🔊 NUEVO: Sonido de Sirena para advertencia
       playWarningSiren() {
         if(!this.ctx) return; const t=this.ctx.currentTime;
         try {
-          // Tono 1 sube y baja
           const o1=this.ctx.createOscillator(); const g1=this.ctx.createGain();
           o1.type='sawtooth'; o1.connect(g1); g1.connect(this.ctx.destination);
-          o1.frequency.setValueAtTime(600, t); 
-          o1.frequency.linearRampToValueAtTime(900, t+0.4);
-          o1.frequency.linearRampToValueAtTime(600, t+0.8);
-          g1.gain.setValueAtTime(0.15, t); g1.gain.linearRampToValueAtTime(0, t+1);
-          o1.start(t); o1.stop(t+1);
-          
-          // Tono 2 más agudo
+          o1.frequency.setValueAtTime(600, t); o1.frequency.linearRampToValueAtTime(900, t+0.4); o1.frequency.linearRampToValueAtTime(600, t+0.8);
+          g1.gain.setValueAtTime(0.15, t); g1.gain.linearRampToValueAtTime(0, t+1); o1.start(t); o1.stop(t+1);
           const o2=this.ctx.createOscillator(); const g2=this.ctx.createGain();
           o2.type='square'; o2.connect(g2); g2.connect(this.ctx.destination);
-          o2.frequency.setValueAtTime(1200, t); 
-          o2.frequency.linearRampToValueAtTime(1500, t+0.4);
-          o2.frequency.linearRampToValueAtTime(1200, t+0.8);
-          g2.gain.setValueAtTime(0.08, t); g2.gain.linearRampToValueAtTime(0, t+1);
-          o2.start(t); o2.stop(t+1);
+          o2.frequency.setValueAtTime(1200, t); o2.frequency.linearRampToValueAtTime(1500, t+0.4); o2.frequency.linearRampToValueAtTime(1200, t+0.8);
+          g2.gain.setValueAtTime(0.08, t); g2.gain.linearRampToValueAtTime(0, t+1); o2.start(t); o2.stop(t+1);
         } catch(e){}
       }
     };
@@ -210,7 +197,7 @@
       obstacles:[], particles:[],
       nightMode:false, nightStart:0, lastNightDist:0,
       narrowed:false, narrowStart:0, lastNarrowDist:0,
-      warningNarrow:false, warningNarrowEnd:0, // Nueva lógica de advertencia
+      warningNarrow:false, warningNarrowEnd:0,
       iceMode:false, iceStart:0, lastIceDist:0,
       baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0
     };
@@ -234,7 +221,6 @@
     }
     window.addEventListener('resize', resize); resize();
 
-    // Controles táctiles
     let drag=false, dOff=0;
     canvas.addEventListener('touchstart', e=>{ 
       e.preventDefault(); if(!state.running) return; 
@@ -248,7 +234,6 @@
     canvas.addEventListener('touchend', ()=>drag=false); 
     canvas.addEventListener('touchcancel', ()=>drag=false);
 
-    // Dibujo coches
     function drawF1(x,y,w,h,col) {
       ctx.save(); ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(x+3,y+4,w,h);
       ctx.fillStyle='#111'; ctx.fillRect(x-4,y+12,5,14); ctx.fillRect(x+w-1,y+12,5,14); ctx.fillRect(x-4,y+h-26,8,22); ctx.fillRect(x+w-4,y+h-26,8,22);
@@ -260,28 +245,20 @@
 
     function drawEnv() {
       const rw=state.currentRoadW, rx=state.currentRoadX;
-      
-      // 🌱 Césped
       ctx.fillStyle=state.nightMode?(state.iceMode?'#050a10':'#0a0a0a'):(state.iceMode?'#0a1520':'#2d8a35'); 
       ctx.fillRect(0,0,canvas.width,canvas.height);
       
-      // 🛣️ Asfalto (CAMBIO DE COLOR AQUÍ)
       let roadColor = '#333';
-      if (state.nightMode) {
-        roadColor = state.iceMode ? '#15202a' : '#1a1a1a'; // Gris azulado oscuro
-      } else {
-        roadColor = state.iceMode ? '#6c9ebf' : '#333'; // AZUL HIELO CLARO
-      }
+      if (state.nightMode) roadColor = state.iceMode ? '#15202a' : '#1a1a1a';
+      else roadColor = state.iceMode ? '#6c9ebf' : '#333'; // 🧊 Azul hielo
       ctx.fillStyle = roadColor;
       ctx.fillRect(rx,0,rw,canvas.height);
       
-      // 🏁 Kerbs
       const kH=22; for(let i=-kH; i<canvas.height+kH; i+=kH) { 
         let y=i+(state.roadOffset%kH); 
         ctx.fillStyle=(Math.floor((y+state.roadOffset)/kH)%2!==0)?'#cc0000':'#ffffff'; 
         ctx.fillRect(rx-7,y,7,kH); ctx.fillRect(rx+rw,y,7,kH); 
       }
-      // Línea central
       ctx.strokeStyle=state.nightMode?'#444':'#fff'; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
       ctx.beginPath(); ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,canvas.height); ctx.stroke(); ctx.setLineDash([]);
       
@@ -292,7 +269,6 @@
       }
     }
 
-    // 💡 LUCES RETRO (MÁSCARA VECTORIAL)
     function drawNight() {
       if(!state.nightMode) return; 
       ctx.save();
@@ -327,45 +303,36 @@
 
         const d = Math.floor(state.score);
         
-        // 🌙 MODO NOCHE (2000m, dura 20s)
         if(!state.nightMode && d>=state.lastNightDist+2000) { state.nightMode=true; state.nightStart=Date.now(); state.lastNightDist=d; els.nightBadge.style.display='inline-block'; }
         if(state.nightMode && Date.now()-state.nightStart>20000) { state.nightMode=false; els.nightBadge.style.display='none'; }
         
-        // 🧊 MODO HIELO (4000m, dura 15s)
         if(!state.iceMode && d>=state.lastIceDist+4000) { state.iceMode=true; state.iceStart=Date.now(); state.lastIceDist=d; els.iceBadge.style.display='inline-block'; }
         if(state.iceMode && Date.now()-state.iceStart>15000) { state.iceMode=false; els.iceBadge.style.display='none'; }
 
-        // 🚧 LÓGICA DE ESTRECHAMIENTO CON AVISO
-        // 1. Activar Advertencia (2 segundos antes de estrechar)
         if(!state.warningNarrow && !state.narrowed && d>=state.lastNarrowDist+3000) {
           state.warningNarrow = true;
-          state.warningNarrowEnd = Date.now() + 2000; // Suena la alarma
+          state.warningNarrowEnd = Date.now() + 2000;
           audio.playWarningSiren();
-          warningPanel.style.display = 'block'; // Muestra cartel
+          warningPanel.style.display = 'block';
         }
-
-        // 2. Activar Estrechamiento (cuando pasan los 2 seg)
         if(state.warningNarrow && Date.now() >= state.warningNarrowEnd) {
           state.warningNarrow = false;
           state.narrowed = true;
           state.narrowStart = Date.now();
           state.targetRoadW = state.baseRoadW * 0.60;
           els.narrowBadge.style.display = 'inline-block';
-          warningPanel.style.display = 'none'; // Oculta cartel
+          warningPanel.style.display = 'none';
         }
-
-        // 3. Terminar Estrechamiento (dura 30s)
         if(state.narrowed && Date.now()-state.narrowStart>30000) { 
           state.narrowed=false; 
           state.targetRoadW=state.baseRoadW; 
           els.narrowBadge.style.display='none';
-          state.lastNarrowDist = d; // Resetea distancia para el próximo ciclo
+          state.lastNarrowDist = d;
         }
 
         state.currentRoadW = lerp(state.currentRoadW, state.targetRoadW, 0.06);
         state.currentRoadX = (canvas.width - state.currentRoadW)/2;
 
-        // 🧊 FÍSICA DE MOVIMIENTO
         let isIce = state.iceMode;
         let accel = isIce ? 0.035 : 0.18;
         let friction = isIce ? 0.93 : 0.72;
@@ -382,7 +349,7 @@
           state.player.x = state.currentRoadX + state.currentRoadW - state.player.w; state.player.vx *= -0.4; 
         }
 
-        // Spawn tráfico
+        // 🚗 Spawn tráfico
         let lastY = state.obstacles.length > 0 ? state.obstacles[state.obstacles.length-1].y : 250;
         let spawnRate = 0.038 + (state.score / 18000); 
         if(state.nightMode) spawnRate += 0.025;
@@ -403,7 +370,12 @@
             if(valid) {
               placedX.push(px);
               let isFast = Math.random() < 0.18;
-              let relSpd = isFast ? state.speed * 0.12 : state.speed * 0.5;
+              
+              // 📈 DIFICULTAD PROGRESIVA: +15% velocidad enemigos cada 200m
+              let speedMultiplier = 1 + Math.floor(d / 200) * 0.15;
+              let baseFactor = isFast ? 0.12 : 0.5;
+              let relSpd = state.speed * baseFactor * speedMultiplier;
+
               let col = isFast ? '#ff2200' : ['#00d2be','#061954','#ff8000','#ff87bc','#0090ff','#33ff33','#cccccc'][Math.floor(Math.random()*7)];
               state.obstacles.push({ x:px, y:-state.player.h-50-(c*60), w:state.player.w, h:state.player.h, speed:relSpd, c:col, passed:false });
             }
@@ -427,7 +399,7 @@
       audio.stopMusic(); audio.playCrash();
       if(navigator.vibrate) navigator.vibrate([150,50,120]);
       createExplosion(state.player.x+state.player.w/2, state.player.y+state.player.h/2);
-      warningPanel.style.display = 'none'; // Asegurar que se oculta al morir
+      warningPanel.style.display = 'none';
       setTimeout(gameOver, 1000);
     }
 
