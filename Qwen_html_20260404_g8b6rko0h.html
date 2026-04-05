@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>🏎️ F1 Night Run</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body {
+      width:100%; height:100%; overflow:hidden; background:#0a0a0f; touch-action:none;
+      -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; font-family:system-ui; color:#fff;
+    }
+    canvas { display:block; width:100%; height:100%; }
+    
+    #ui {
+      position:absolute; top:env(safe-area-inset-top, 30px); left:0; right:0; text-align:center;
+      pointer-events:none; z-index:10; text-shadow:0 2px 4px rgba(0,0,0,0.9);
+    }
+    #ui > * { pointer-events:auto; }
+    h1 { font-size:18px; font-weight:900; font-style:italic; margin-bottom:2px; color:#ff3333; letter-spacing:1px; }
+    
+    #scoreBoard {
+      background: rgba(0,0,0,0.75); padding: 4px 8px; border-radius: 8px;
+      display: inline-flex; gap: 5px; align-items: center; border: 1px solid #444; margin-bottom: 5px; font-size: 12px;
+    }
+    .badge {
+      display:none; padding:2px 5px; border-radius:5px; font-size:8px; font-weight:bold; margin-left:3px;
+      animation: pulse 1s infinite alternate;
+    }
+    #nightBadge { background:#0a0a2a; color:#66ccff; border:1px solid #66ccff; }
+    #narrowBadge { background:#2a1a0a; color:#ffaa00; border:1px solid #ffaa00; }
+    @keyframes pulse { from { opacity:0.8; } to { opacity:1; box-shadow:0 0 5px currentColor; } }
+
+    .btn {
+      padding: 9px 18px; font-size: 13px; font-weight: bold; background: linear-gradient(to bottom, #ff3333, #cc0000); 
+      border: 2px solid #fff; border-radius: 14px; color: #fff; cursor: pointer; margin-top:4px;
+      text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+    }
+    .btn:active { transform: scale(0.96); }
+    .hidden { display:none !important; }
+    
+    .panel {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(8,8,12,0.96); border:1px solid #333; border-radius:12px;
+      padding:14px; width:80%; max-width:280px; text-align:center; z-index:20; box-shadow:0 6px 16px rgba(0,0,0,0.7);
+    }
+    .panel h2 { margin-bottom:5px; color:#ff3333; font-size:16px; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h1 id="title">F1 NIGHT RUN</h1>
+    <div id="scoreBoard">
+      <span id="score">0 m</span> |
+      <span id="lastScore" style="color:#aaa;">Última: 0m</span> |
+      <span id="highScore" style="color:#ffd700;">🏆 0m</span>
+      <span id="nightBadge" class="badge">🌙 NOCHE</span>
+      <span id="narrowBadge" class="badge">🚧 ESTRECHO</span>
+    </div>
+    <br>
+    <button id="startBtn" class="btn">🏁 ARRANCAR</button>
+    <p style="font-size:10px; opacity:0.5; margin-top:2px;">👆 Arrastra para moverte</p>
+    
+    <div id="gameOverPanel" class="panel hidden">
+      <h2>💥 CRASH!</h2>
+      <p id="finalScore" style="font-size:15px; margin-bottom:6px;">Distancia: 0m</p>
+      <button id="restartBtn" class="btn">🔄 REINICIAR</button>
+    </div>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+
+  <script>
+    const lerp = (a, b, t) => a + (b - a) * t;
+    
+    // 🔹 AUDIO SUAVE Y ESTABLE
+    const audio = {
+      ctx: null, engine: { osc: null, gain: null, filter: null, active: false },
+      music: { playing: false, nextTime: 0, beat: 0, timer: null },
+      
+      init() {
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+      },
+      startEngine() {
+        if (this.engine.active) return;
+        this.engine.osc = this.ctx.createOscillator();
+        this.engine.gain = this.ctx.createGain();
+        this.engine.filter = this.ctx.createBiquadFilter();
+        this.engine.osc.type = 'triangle'; // Más suave que sawtooth
+        this.engine.filter.type = 'lowpass'; this.engine.filter.Q.value = 0.7;
+        this.engine.osc.connect(this.engine.filter); this.engine.filter.connect(this.engine.gain); this.engine.gain.connect(this.ctx.destination);
+        this.engine.osc.frequency.value = 50; this.engine.filter.frequency.value = 220;
+        this.engine.gain.gain.value = 0; this.engine.osc.start(); this.engine.active = true;
+      },
+      updateEngine(speed) {
+        if (!this.engine.active) return;
+        const t = this.ctx.currentTime;
+        // Curvas suaves, volúmenes bajos
+        this.engine.osc.frequency.setTargetAtTime(40 + speed * 7, t, 0.12);
+        this.engine.gain.gain.setTargetAtTime(0.012 + speed * 0.006, t, 0.12);
+        this.engine.filter.frequency.setTargetAtTime(130 + speed * 30, t, 0.12);
+      },
+      stopEngine() { if (this.engine.osc) { try { this.engine.osc.stop(); } catch(e){} this.engine.osc = null; } this.engine.active = false; },
+      
+      startMusic() {
+        if (this.music.playing) return;
+        this.music.playing = true; this.music.nextTime = this.ctx.currentTime + 0.05; this.music.beat = 0;
+        this._schedule();
+      },
+      stopMusic() { this.music.playing = false; if (this.music.timer) clearTimeout(this.music.timer); },
+      _schedule() {
+        if (!this.music.playing || !this.ctx) return;
+        const bpm = 110, sec = 60 / bpm;
+        while (this.music.nextTime < this.ctx.currentTime + 0.15) {
+          this._playBeat(this.music.nextTime, this.music.beat);
+          this.music.nextTime += sec; this.music.beat = (this.music.beat + 1) % 16;
+        }
+        this.music.timer = setTimeout(() => this._schedule(), 25);
+      },
+      _playBeat(time, b) {
+        try {
+          if (b % 4 === 0) { const o=this.ctx.createOscillator(), g=this.ctx.createGain(); o.connect(g); g.connect(this.ctx.destination); o.frequency.setValueAtTime(120,time); o.frequency.exponentialRampToValueAtTime(25,time+0.15); g.gain.setValueAtTime(0.18,time); g.gain.exponentialRampToValueAtTime(0.001,time+0.15); o.start(time); o.stop(time+0.15); }
+          if (b % 4 === 2) { const d=this.ctx.createBuffer(1,this.ctx.sampleRate*0.08,this.ctx.sampleRate).getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(this.ctx.sampleRate*0.03)); const n=this.ctx.createBufferSource(); n.buffer=d; const g=this.ctx.createGain(); n.connect(g); g.connect(this.ctx.destination); g.gain.setValueAtTime(0.12,time); g.gain.exponentialRampToValueAtTime(0.001,time+0.08); n.start(time); n.stop(time+0.08); }
+          if (b % 2 === 1) { const o=this.ctx.createOscillator(), g=this.ctx.createGain(); o.type='square'; o.connect(g); g.connect(this.ctx.destination); o.frequency.setValueAtTime(8000,time); g.gain.setValueAtTime(0.025,time); g.gain.exponentialRampToValueAtTime(0.001,time+0.02); o.start(time); o.stop(time+0.02); }
+          const bass = [55, 55, 65, 55, 73, 73, 55, 65, 55, 55, 82, 73, 55, 65, 55, 49];
+          if (b % 2 === 0) { const o=this.ctx.createOscillator(), g=this.ctx.createGain(); o.type='triangle'; o.connect(g); g.connect(this.ctx.destination); o.frequency.setValueAtTime(bass[b/2],time); g.gain.setValueAtTime(0.14,time); g.gain.exponentialRampToValueAtTime(0.001,time+0.25); o.start(time); o.stop(time+0.25); }
+        } catch(e){}
+      },
+      playPass() {
+        if(!this.ctx) return; const t=this.ctx.currentTime;
+        try {
+          const d=this.ctx.createBuffer(1,this.ctx.sampleRate*0.1,this.ctx.sampleRate).getChannelData(0);
+          for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(this.ctx.sampleRate*0.02));
+          const n=this.ctx.createBufferSource(); n.buffer=d; const g1=this.ctx.createGain(); n.connect(g1); g1.connect(this.ctx.destination);
+          g1.gain.setValueAtTime(0.12,t); g1.gain.exponentialRampToValueAtTime(0.001,t+0.1); n.start(t); n.stop(t+0.1);
+          const o=this.ctx.createOscillator(), g2=this.ctx.createGain(); o.type='sine'; o.connect(g2); g2.connect(this.ctx.destination);
+          o.frequency.setValueAtTime(550,t); o.frequency.exponentialRampToValueAtTime(200,t+0.15); g2.gain.setValueAtTime(0.07,t); g2.gain.exponentialRampToValueAtTime(0.001,t+0.15); o.start(t); o.stop(t+0.15);
+        } catch(e){}
+      },
+      playCrash() {
+        if(!this.ctx) return; const o=this.ctx.createOscillator(), g=this.ctx.createGain(); o.connect(g); g.connect(this.ctx.destination); const t=this.ctx.currentTime;
+        try { o.type='sawtooth'; o.frequency.setValueAtTime(100,t); o.frequency.exponentialRampToValueAtTime(20,t+0.5); g.gain.setValueAtTime(0.25,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.5); o.start(t); o.stop(t+0.5); } catch(e){}
+      }
+    };
+
+    // 🔹 UI & ESTADO
+    const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+    const els = {
+      startBtn: document.getElementById('startBtn'), restartBtn: document.getElementById('restartBtn'),
+      score: document.getElementById('score'), lastScore: document.getElementById('lastScore'), highScore: document.getElementById('highScore'),
+      nightBadge: document.getElementById('nightBadge'), narrowBadge: document.getElementById('narrowBadge'),
+      title: document.getElementById('title'), gameOver: document.getElementById('gameOverPanel'), finalScore: document.getElementById('finalScore')
+    };
+
+    let state = { 
+      running:false, exploding:false, score:0, 
+      lastScore: parseInt(localStorage.getItem('f1_last')) || 0,
+      highScore: parseInt(localStorage.getItem('f1_highscore')) || 0, 
+      baseSpeed: 6.5, speed: 6.5, roadOffset: 0,
+      player:{x:0,y:0,w:0,h:0,color:'#ff0000'}, obstacles:[], particles:[],
+      nightMode:false, nightStart:0, lastNightDist:0,
+      narrowed:false, narrowStart:0, lastNarrowDist:0, 
+      baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0
+    };
+
+    els.lastScore.textContent = `Última: ${state.lastScore}m`;
+    els.highScore.textContent = `🏆 ${state.highScore}m`;
+
+    function resize() {
+      canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+      const s = Math.min(canvas.width/400, 1); 
+      state.player.w = 36*s; state.player.h = state.player.w*1.65;
+      state.player.y = canvas.height - 130;
+      state.baseRoadW = Math.min(canvas.width*0.92, 480);
+      state.targetRoadW = state.baseRoadW; state.currentRoadW = state.baseRoadW;
+      state.currentRoadX = (canvas.width - state.currentRoadW) / 2;
+      if(!state.running) state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2;
+    }
+    window.addEventListener('resize', resize); resize();
+
+    // Controles
+    let drag=false, dOff=0;
+    canvas.addEventListener('touchstart', e=>{ e.preventDefault(); if(!state.running) return; dOff=e.touches[0].clientX-state.player.x; drag=true; }, {passive:false});
+    canvas.addEventListener('touchmove', e=>{ e.preventDefault(); if(!state.running||!drag) return; let x=e.touches[0].clientX-dOff; state.player.x=Math.max(state.currentRoadX, Math.min(x, state.currentRoadX+state.currentRoadW-state.player.w)); }, {passive:false});
+    canvas.addEventListener('touchend', ()=>drag=false); canvas.addEventListener('touchcancel', ()=>drag=false);
+
+    // Dibujo
+    function drawF1(x,y,w,h,col) {
+      ctx.save(); ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(x+3,y+4,w,h);
+      ctx.fillStyle='#111'; ctx.fillRect(x-4,y+12,5,14); ctx.fillRect(x+w-1,y+12,5,14); ctx.fillRect(x-4,y+h-26,8,22); ctx.fillRect(x+w-4,y+h-26,8,22);
+      ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(x+w*0.4,y); ctx.lineTo(x+w*0.6,y); ctx.lineTo(x+w*0.7,y+h*0.25); ctx.lineTo(x+w,y+h*0.35); ctx.lineTo(x+w,y+h*0.75); ctx.lineTo(x+w*0.7,y+h); ctx.lineTo(x+w*0.3,y+h); ctx.lineTo(x,y+h*0.75); ctx.lineTo(x,y+h*0.35); ctx.lineTo(x+w*0.3,y+h*0.25); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.fillRect(x+w*0.15,y+h-10,w*0.7,6); ctx.fillRect(x+w*0.15,y+h*0.1,w*0.7,4);
+      ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(x+w/2,y+h*0.5,w*0.18,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#ffff00'; ctx.beginPath(); ctx.arc(x+w/2,y+h*0.45,w*0.1,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+
+    function drawEnv() {
+      const rw=state.currentRoadW, rx=state.currentRoadX;
+      ctx.fillStyle=state.nightMode?'#0a0f1a':'#2d8a35'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle=state.nightMode?'#1c1c24':'#333'; ctx.fillRect(rx,0,rw,canvas.height);
+      const kH=22; for(let i=-kH; i<canvas.height+kH; i+=kH) { let y=i+(state.roadOffset%kH); ctx.fillStyle=(Math.floor((y+state.roadOffset)/kH)%2!==0)?'#cc0000':'#ffffff'; ctx.fillRect(rx-7,y,7,kH); ctx.fillRect(rx+rw,y,7,kH); }
+      ctx.strokeStyle=state.nightMode?'#445':'#fff'; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
+      ctx.beginPath(); ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,canvas.height); ctx.stroke(); ctx.setLineDash([]);
+      if(state.narrowed) {
+        ctx.strokeStyle='#ffaa00'; ctx.lineWidth=3; ctx.setLineDash([12,8]); ctx.lineDashOffset=-state.roadOffset;
+        ctx.beginPath(); ctx.moveTo(rx+5,0); ctx.lineTo(rx+5,canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(rx+rw-5,0); ctx.lineTo(rx+rw-5,canvas.height); ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+
+    function drawNight() {
+      if(!state.nightMode) return; ctx.save();
+      ctx.fillStyle='rgba(2,2,6,0.70)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      const cx=state.player.x+state.player.w/2, cy=state.player.y+state.player.h*0.12, len=340, hw=120;
+      const beam=(ox)=>{ const x=cx+ox; ctx.globalCompositeOperation='destination-out'; const g=ctx.createLinearGradient(x,cy,x,cy-len); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.15,'rgba(255,255,255,0.95)'); g.addColorStop(0.45,'rgba(255,255,255,0.6)'); g.addColorStop(0.8,'rgba(255,255,255,0.25)'); g.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(x-hw/2,cy); ctx.quadraticCurveTo(x-hw/1.4,cy-len*0.6,x-hw/2.5,cy-len); ctx.lineTo(x+hw/2.5,cy-len); ctx.quadraticCurveTo(x+hw/1.4,cy-len*0.6,x+hw/2,cy); ctx.fill(); ctx.globalCompositeOperation='source-over'; const gl=ctx.createLinearGradient(x,cy,x,cy-len); gl.addColorStop(0,'rgba(255,250,225,0.6)'); gl.addColorStop(0.2,'rgba(255,240,190,0.35)'); gl.addColorStop(0.5,'rgba(255,225,160,0.18)'); gl.addColorStop(0.8,'rgba(255,210,130,0.08)'); gl.addColorStop(1,'rgba(255,200,110,0)'); ctx.fillStyle=gl; ctx.beginPath(); ctx.moveTo(x-hw/2,cy); ctx.quadraticCurveTo(x-hw/1.4,cy-len*0.6,x-hw/2.5,cy-len); ctx.lineTo(x+hw/2.5,cy-len); ctx.quadraticCurveTo(x+hw/1.4,cy-len*0.6,x+hw/2,cy); ctx.fill(); };
+      beam(-state.player.w/3.5); beam(state.player.w/3.5);
+      const amb=ctx.createRadialGradient(cx,cy+15,5,cx,cy+15,85); amb.addColorStop(0,'rgba(255,235,180,0.45)'); amb.addColorStop(1,'rgba(255,235,180,0)'); ctx.fillStyle=amb; ctx.beginPath(); ctx.ellipse(cx,cy+15,85,55,0,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+
+    function createExplosion(x,y) { for(let i=0;i<60;i++) state.particles.push({x,y, vx:(Math.random()-0.5)*15, vy:(Math.random()-0.5)*15, life:1, c:Math.random()>0.5?'#ffaa00':'#ff3300', s:Math.random()*4.5+2}); }
+
+    // 🔹 LÓGICA PRINCIPAL
+    function update() {
+      try {
+        // Dificultad progresiva suave
+        state.speed = state.baseSpeed + (state.score / 1200); 
+        state.roadOffset += state.speed; 
+        audio.updateEngine(state.speed);
+
+        const d = Math.floor(state.score);
+        if(!state.nightMode && d>=state.lastNightDist+2000) { state.nightMode=true; state.nightStart=Date.now(); state.lastNightDist=d; els.nightBadge.style.display='inline-block'; }
+        if(state.nightMode && Date.now()-state.nightStart>20000) { state.nightMode=false; els.nightBadge.style.display='none'; }
+        
+        if(!state.narrowed && d>=state.lastNarrowDist+3000) { state.narrowed=true; state.narrowStart=Date.now(); state.lastNarrowDist=d; state.targetRoadW=state.baseRoadW*0.60; els.narrowBadge.style.display='inline-block'; }
+        if(state.narrowed && Date.now()-state.narrowStart>30000) { state.narrowed=false; state.targetRoadW=state.baseRoadW; els.narrowBadge.style.display='none'; }
+
+        state.currentRoadW = lerp(state.currentRoadW, state.targetRoadW, 0.06);
+        state.currentRoadX = (canvas.width - state.currentRoadW)/2;
+
+        // Spawn: más coches, a veces rápidos, controlado por límite
+        let lastY = state.obstacles.length > 0 ? state.obstacles[state.obstacles.length-1].y : 250;
+        let spawnRate = 0.038 + (state.score / 18000); // Sube lentamente
+        if(state.nightMode) spawnRate += 0.025;
+        if(state.narrowed) spawnRate *= 0.85;
+
+        if((lastY > 110 || state.obstacles.length === 0) && Math.random() < spawnRate && state.obstacles.length < 5) {
+          let count = Math.random() < 0.35 ? (Math.random() < 0.2 ? 3 : 2) : 1;
+          if(state.narrowed) count = 1;
+
+          let placedX = [];
+          for(let c=0; c<count; c++) {
+            let px, attempts=0, valid=false;
+            while(!valid && attempts<15) {
+              px = state.currentRoadX + 12 + Math.random() * (state.currentRoadW - state.player.w - 24);
+              valid = placedX.every(x => Math.abs(px - x) > state.player.w * 0.85);
+              attempts++;
+            }
+            if(valid) {
+              placedX.push(px);
+              let isFast = Math.random() < 0.18; // 18% rápidos
+              let relSpd = isFast ? state.speed * 0.12 : state.speed * 0.5;
+              let col = isFast ? '#ff2200' : ['#00d2be','#061954','#ff8000','#ff87bc','#0090ff','#33ff33','#cccccc'][Math.floor(Math.random()*7)];
+              state.obstacles.push({ x:px, y:-state.player.h-50-(c*60), w:state.player.w, h:state.player.h, speed:relSpd, c:col, passed:false, isFast:isFast });
+            }
+          }
+        }
+
+        // Movimiento & Colisión
+        for(let i=state.obstacles.length-1; i>=0; i--) {
+          let o=state.obstacles[i]; 
+          o.y += state.speed - o.speed;
+          let p=state.player, m=4; // Hitbox justa
+          if(p.x+m<o.x+o.w-m && p.x+p.w-m>o.x+m && p.y+m<o.y+o.h-m && p.y+p.h-m>o.y+m) { triggerCrash(); return; }
+          if(state.running && !o.passed && o.y>p.y+p.h) { o.passed=true; state.score+=15; audio.playPass(); }
+          if(o.y>canvas.height+100) state.obstacles.splice(i,1);
+        }
+        if(state.running) { state.score+=0.06; els.score.textContent=`${Math.floor(state.score)} m`; }
+      } catch(e) { console.warn(e); }
+    }
+
+    function triggerCrash() {
+      state.running=false; state.exploding=true; 
+      audio.stopMusic(); audio.playCrash();
+      if(navigator.vibrate) navigator.vibrate([150,50,120]);
+      createExplosion(state.player.x+state.player.w/2, state.player.y+state.player.h/2);
+      setTimeout(gameOver, 1000);
+    }
+
+    function gameOver() {
+      state.exploding=false; audio.stopEngine();
+      let d=Math.floor(state.score); 
+      state.lastScore = d; localStorage.setItem('f1_last', d);
+      els.lastScore.textContent = `Última: ${d}m`;
+      if(d > state.highScore) { state.highScore=d; localStorage.setItem('f1_highscore',d); els.highScore.textContent=`🏆 ${d}m`; }
+      els.finalScore.textContent = `Distancia: ${d} m`;
+      els.gameOver.classList.remove('hidden'); els.title.classList.add('hidden');
+    }
+
+    function draw() {
+      try {
+        ctx.clearRect(0,0,canvas.width,canvas.height); drawEnv();
+        state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c));
+        if(!state.exploding) drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color);
+        if(state.particles.length>0) {
+          for(let i=state.particles.length-1;i>=0;i--) { let p=state.particles[i]; p.x+=p.vx; p.y+=p.vy; p.life-=0.018; if(p.life<=0) state.particles.splice(i,1); }
+          state.particles.forEach(p=>{ ctx.globalAlpha=p.life; ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.s,0,Math.PI*2); ctx.fill(); }); ctx.globalAlpha=1;
+        }
+        drawNight();
+      } catch(e) { console.warn(e); }
+    }
+
+    function loop() { update(); draw(); if(state.running || state.exploding) requestAnimationFrame(loop); }
+    function startGame() {
+      audio.init(); audio.startEngine(); audio.startMusic();
+      state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[];
+      state.running=true; state.exploding=false; state.nightMode=false; state.lastNightDist=0; state.narrowed=false; state.lastNarrowDist=0;
+      state.targetRoadW=state.baseRoadW; state.currentRoadW=state.baseRoadW;
+      els.nightBadge.style.display='none'; els.narrowBadge.style.display='none'; els.score.textContent='0 m';
+      els.gameOver.classList.add('hidden'); els.title.classList.remove('hidden'); els.startBtn.classList.add('hidden');
+      resize(); loop();
+    }
+
+    els.startBtn.addEventListener('click', startGame);
+    els.restartBtn.addEventListener('click', startGame);
+    resize(); draw();
+  </script>
+</body>
+</html>
