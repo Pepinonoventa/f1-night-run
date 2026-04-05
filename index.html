@@ -5,34 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>🏎️ F1 Night Run</title>
+  <title>🏎️ F1 Ultimate Run</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body {
-      width:100%; height:100%; overflow:hidden; background:#000000; touch-action:none;
+      width:100%; height:100%; overflow:hidden; background:#000; touch-action:none;
       -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; font-family:system-ui; color:#fff;
     }
     canvas { display:block; width:100%; height:100%; }
     
     #ui {
-      position:absolute; top:env(safe-area-inset-top, 28px); left:0; right:0; text-align:center;
+      position:absolute; top:env(safe-area-inset-top, 24px); left:0; right:0; text-align:center;
       pointer-events:none; z-index:10; text-shadow:0 2px 4px rgba(0,0,0,0.9);
     }
     #ui > * { pointer-events:auto; }
-    h1 { font-size:17px; font-weight:900; font-style:italic; margin-bottom:2px; color:#ff3333; letter-spacing:1px; }
+    h1 { font-size:16px; font-weight:900; font-style:italic; margin-bottom:2px; color:#ff3333; letter-spacing:1px; }
     
     #scoreBoard {
-      background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 8px;
-      display: inline-flex; gap: 4px; align-items: center; border: 1px solid #333; margin-bottom: 4px; font-size: 11px; flex-wrap: wrap; justify-content: center;
+      background: rgba(0,0,0,0.65); padding: 3px 7px; border-radius: 8px;
+      display: inline-flex; gap: 3px; align-items: center; border: 1px solid #333; margin-bottom: 3px; font-size: 10px; flex-wrap: wrap; justify-content: center;
     }
     .badge {
-      display:none; padding:2px 5px; border-radius:5px; font-size:8px; font-weight:bold; margin-left:2px;
+      display:none; padding:2px 4px; border-radius:4px; font-size:7px; font-weight:bold; margin-left:2px;
       animation: pulse 1s infinite alternate;
     }
     #nightBadge { background:#0a0a2a; color:#66ccff; border:1px solid #66ccff; }
     #narrowBadge { background:#2a1a0a; color:#ffaa00; border:1px solid #ffaa00; }
     #iceBadge { background:#0a1a2a; color:#00ffff; border:1px solid #00ffff; }
-    @keyframes pulse { from { opacity:0.8; } to { opacity:1; box-shadow:0 0 6px currentColor; } }
+    #scenarioBadge { background:#2a0a2a; color:#ff66cc; border:1px solid #ff66cc; }
+    @keyframes pulse { from { opacity:0.8; } to { opacity:1; box-shadow:0 0 5px currentColor; } }
 
     .btn {
       padding: 8px 16px; font-size: 12px; font-weight: bold; background: linear-gradient(to bottom, #ff3333, #cc0000); 
@@ -50,28 +51,42 @@
     .panel h2 { margin-bottom:5px; color:#ff3333; font-size:15px; }
 
     #warningPanel {
-      position:absolute; top:40%; left:50%; transform:translate(-50%,-50%);
+      position:absolute; top:38%; left:50%; transform:translate(-50%,-50%);
       background:rgba(255, 50, 0, 0.9); border:3px solid #fff; border-radius:15px;
-      padding:15px 25px; text-align:center; z-index:15; box-shadow:0 0 20px #ff0000;
-      animation: shake 0.5s infinite; display:none;
+      padding:12px 20px; text-align:center; z-index:15; box-shadow:0 0 20px #ff0000;
+      animation: shake 0.4s infinite; display:none;
     }
-    #warningPanel h2 { color:#fff; font-size:22px; margin:0; text-transform:uppercase; }
-    #warningPanel p { color:#fff; font-size:14px; margin-top:5px; font-weight:bold; }
+    #warningPanel h2 { color:#fff; font-size:18px; margin:0; text-transform:uppercase; }
+    #warningPanel p { color:#fff; font-size:12px; margin-top:4px; font-weight:bold; }
     @keyframes shake {
       0% { transform:translate(-50%,-50%) rotate(0deg); }
       25% { transform:translate(-52%,-50%) rotate(-3deg); }
       75% { transform:translate(-48%,-50%) rotate(3deg); }
       100% { transform:translate(-50%,-50%) rotate(0deg); }
     }
+
+    /* Indicadores de PowerUps */
+    #powerups {
+      position:absolute; top:env(safe-area-inset-top, 70px); right:10px;
+      display:flex; flex-direction:column; gap:8px; pointer-events:none;
+    }
+    .pu-icon {
+      width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      font-size:16px; background:rgba(0,0,0,0.7); border:2px solid #555; opacity:0.3; transition:0.2s;
+    }
+    .pu-icon.active { opacity:1; border-color:#fff; box-shadow:0 0 8px currentColor; transform:scale(1.1); }
+    #shieldIcon { color:#00ccff; }
+    #turboIcon { color:#ffaa00; }
   </style>
 </head>
 <body>
   <div id="ui">
-    <h1 id="title">F1 NIGHT RUN</h1>
+    <h1 id="title">F1 ULTIMATE RUN</h1>
     <div id="scoreBoard">
       <span id="score">0 m</span> |
       <span id="lastScore" style="color:#aaa;">Últ: 0m</span> |
       <span id="highScore" style="color:#ffd700;">🏆 0m</span>
+      <span id="scenarioBadge" class="badge"> BASE</span>
       <span id="nightBadge" class="badge">🌙 NOCHE</span>
       <span id="narrowBadge" class="badge">🚧 ESTRECHO</span>
       <span id="iceBadge" class="badge">🧊 HIELO</span>
@@ -87,6 +102,11 @@
     </div>
   </div>
 
+  <div id="powerups">
+    <div id="shieldIcon" class="pu-icon">🛡️</div>
+    <div id="turboIcon" class="pu-icon">⚡</div>
+  </div>
+
   <div id="warningPanel">
     <h2>⚠️ ATENCIÓN ⚠️</h2>
     <p>¡CARRETERA ESTRECHA!</p>
@@ -96,6 +116,7 @@
 
   <script>
     const lerp = (a, b, t) => a + (b - a) * t;
+    const scenarios = ['base', 'desert', 'mountain', 'night'];
     
     // 🔹 AUDIO
     const audio = {
@@ -175,12 +196,42 @@
           o2.frequency.setValueAtTime(1200, t); o2.frequency.linearRampToValueAtTime(1500, t+0.4); o2.frequency.linearRampToValueAtTime(1200, t+0.8);
           g2.gain.setValueAtTime(0.08, t); g2.gain.linearRampToValueAtTime(0, t+1); o2.start(t); o2.stop(t+1);
         } catch(e){}
+      },
+      playPowerUp(type) {
+        if(!this.ctx) return; const t=this.ctx.currentTime;
+        try {
+          const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+          o.type = type==='shield' ? 'sine' : 'square';
+          o.connect(g); g.connect(this.ctx.destination);
+          if(type==='shield') {
+            o.frequency.setValueAtTime(400,t); o.frequency.linearRampToValueAtTime(800,t+0.15);
+            g.gain.setValueAtTime(0.15,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.2);
+          } else {
+            o.frequency.setValueAtTime(200,t); o.frequency.linearRampToValueAtTime(600,t+0.1); o.frequency.linearRampToValueAtTime(900,t+0.2);
+            g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+          }
+          o.start(t); o.stop(t+0.3);
+        } catch(e){}
+      },
+      playShieldBreak() {
+        if(!this.ctx) return; const t=this.ctx.currentTime;
+        try {
+          const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+          o.type='sawtooth'; o.connect(g); g.connect(this.ctx.destination);
+          o.frequency.setValueAtTime(300,t); o.frequency.exponentialRampToValueAtTime(50,t+0.2);
+          g.gain.setValueAtTime(0.2,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.2);
+          o.start(t); o.stop(t+0.2);
+        } catch(e){}
       }
     };
 
     // 🔹 UI & ESTADO
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
     const warningPanel = document.getElementById('warningPanel');
+    const shieldIcon = document.getElementById('shieldIcon');
+    const turboIcon = document.getElementById('turboIcon');
+    const scenarioBadge = document.getElementById('scenarioBadge');
+    
     const els = {
       startBtn: document.getElementById('startBtn'), restartBtn: document.getElementById('restartBtn'),
       score: document.getElementById('score'), lastScore: document.getElementById('lastScore'), highScore: document.getElementById('highScore'),
@@ -194,11 +245,13 @@
       highScore: parseInt(localStorage.getItem('f1_highscore')) || 0, 
       baseSpeed: 6.5, speed: 6.5, roadOffset: 0,
       player:{x:0,y:0,w:0,h:0,vx:0,targetX:0,color:'#ff0000'}, 
-      obstacles:[], particles:[],
+      obstacles:[], particles:[], powerups:[], snow:[],
+      scenario:'base', lastScenarioDist:0,
       nightMode:false, nightStart:0, lastNightDist:0,
       narrowed:false, narrowStart:0, lastNarrowDist:0,
       warningNarrow:false, warningNarrowEnd:0,
       iceMode:false, iceStart:0, lastIceDist:0,
+      hasShield:false, isTurbo:false, turboEnd:0,
       baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0
     };
 
@@ -245,21 +298,25 @@
 
     function drawEnv() {
       const rw=state.currentRoadW, rx=state.currentRoadX;
-      ctx.fillStyle=state.nightMode?(state.iceMode?'#050a10':'#0a0a0a'):(state.iceMode?'#0a1520':'#2d8a35'); 
-      ctx.fillRect(0,0,canvas.width,canvas.height);
+      let grass='#2d8a35', road='#333', kerb1='#cc0000', kerb2='#ffffff', center='#fff';
       
-      let roadColor = '#333';
-      if (state.nightMode) roadColor = state.iceMode ? '#15202a' : '#1a1a1a';
-      else roadColor = state.iceMode ? '#6c9ebf' : '#333'; // 🧊 Azul hielo
-      ctx.fillStyle = roadColor;
-      ctx.fillRect(rx,0,rw,canvas.height);
+      //  Escenarios
+      if(state.scenario==='desert') { grass='#d4a373'; road='#c2b280'; kerb1='#ffaa00'; kerb2='#222'; center='#ffaa00'; }
+      else if(state.scenario==='mountain') { grass='#2c3e50'; road='#34495e'; kerb1='#ecf0f1'; kerb2='#7f8c8d'; center='#ecf0f1'; }
+      else if(state.scenario==='night') { grass='#050505'; road='#111'; kerb1='#cc0000'; kerb2='#ffffff'; center='#444'; }
+      
+      // 🧊 Override Hielo
+      if(state.iceMode) { grass='#0a1520'; road='#6c9ebf'; kerb1='#00ccff'; kerb2='#ffffff'; center='#00ccff'; }
+
+      ctx.fillStyle=grass; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle=road; ctx.fillRect(rx,0,rw,canvas.height);
       
       const kH=22; for(let i=-kH; i<canvas.height+kH; i+=kH) { 
         let y=i+(state.roadOffset%kH); 
-        ctx.fillStyle=(Math.floor((y+state.roadOffset)/kH)%2!==0)?'#cc0000':'#ffffff'; 
+        ctx.fillStyle=(Math.floor((y+state.roadOffset)/kH)%2!==0)?kerb1:kerb2; 
         ctx.fillRect(rx-7,y,7,kH); ctx.fillRect(rx+rw,y,7,kH); 
       }
-      ctx.strokeStyle=state.nightMode?'#444':'#fff'; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
+      ctx.strokeStyle=center; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
       ctx.beginPath(); ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,canvas.height); ctx.stroke(); ctx.setLineDash([]);
       
       if(state.narrowed) {
@@ -270,26 +327,54 @@
     }
 
     function drawNight() {
-      if(!state.nightMode) return; 
-      ctx.save();
-      ctx.beginPath();
+      if(state.scenario!=='night') return; 
+      ctx.save(); ctx.beginPath();
       ctx.rect(0, 0, canvas.width, canvas.height);
       const cx = state.player.x + state.player.w/2;
       const cy = state.player.y + 5;
-      const len = 320; 
-      const width = state.currentRoadW * 0.85; 
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx - width/2, cy - len);
-      ctx.lineTo(cx + width/2, cy - len);
-      ctx.closePath();
-      ctx.fillStyle = '#000000';
-      ctx.fill('evenodd');
-      ctx.restore();
+      const len = 320; const width = state.currentRoadW * 0.85; 
+      ctx.moveTo(cx, cy); ctx.lineTo(cx - width/2, cy - len); ctx.lineTo(cx + width/2, cy - len); ctx.closePath();
+      ctx.fillStyle = '#000000'; ctx.fill('evenodd'); ctx.restore();
       let glow = ctx.createRadialGradient(cx, cy, 5, cx, cy, 40);
-      glow.addColorStop(0, 'rgba(255,255,255,0.6)');
-      glow.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI*2); ctx.fill();
+      glow.addColorStop(0, 'rgba(255,255,255,0.6)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI*2); ctx.fill();
+    }
+
+    function drawPowerups() {
+      state.powerups.forEach(p => {
+        ctx.save();
+        ctx.beginPath(); ctx.arc(p.x+p.w/2, p.y+p.h/2, p.w/2+4, 0, Math.PI*2);
+        ctx.fillStyle = p.type==='shield' ? 'rgba(0,200,255,0.2)' : 'rgba(255,170,0,0.2)';
+        ctx.fill(); ctx.strokeStyle = p.type==='shield' ? '#00ccff' : '#ffaa00'; ctx.lineWidth=2; ctx.stroke();
+        ctx.font = `${p.w*0.7}px Arial`; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillStyle='#fff'; ctx.fillText(p.type==='shield'?'🛡️':'', p.x+p.w/2, p.y+p.h/2);
+        ctx.restore();
+      });
+    }
+
+    function drawSnow() {
+      if(!state.iceMode) return;
+      ctx.fillStyle='rgba(255,255,255,0.8)';
+      state.snow.forEach(s => {
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
+      });
+    }
+
+    function drawPlayerEffects() {
+      const cx = state.player.x + state.player.w/2;
+      const cy = state.player.y + state.player.h/2;
+      // Escudo visual
+      if(state.hasShield) {
+        ctx.strokeStyle='rgba(0,200,255,0.6)'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.arc(cx, cy, state.player.w*0.9, 0, Math.PI*2); ctx.stroke();
+      }
+      // Turbo llamas
+      if(state.isTurbo) {
+        ctx.fillStyle=`rgba(255,${100+Math.random()*100},0,${0.5+Math.random()*0.5})`;
+        ctx.beginPath(); ctx.moveTo(cx-8, cy+state.player.h/2); 
+        ctx.lineTo(cx, cy+state.player.h/2+20+Math.random()*15); 
+        ctx.lineTo(cx+8, cy+state.player.h/2); ctx.fill();
+      }
     }
 
     function createExplosion(x,y) { for(let i=0;i<60;i++) state.particles.push({x,y, vx:(Math.random()-0.5)*15, vy:(Math.random()-0.5)*15, life:1, c:Math.random()>0.5?'#ffaa00':'#ff3300', s:Math.random()*4.5+2}); }
@@ -297,96 +382,126 @@
     // 🔹 LÓGICA PRINCIPAL
     function update() {
       try {
-        state.speed = state.baseSpeed + (state.score / 1200); 
+        let speedMod = state.isTurbo ? 1.8 : 1;
+        state.speed = (state.baseSpeed + (state.score / 1200)) * speedMod; 
         state.roadOffset += state.speed; 
         audio.updateEngine(state.speed);
 
         const d = Math.floor(state.score);
         
-        if(!state.nightMode && d>=state.lastNightDist+2000) { state.nightMode=true; state.nightStart=Date.now(); state.lastNightDist=d; els.nightBadge.style.display='inline-block'; }
-        if(state.nightMode && Date.now()-state.nightStart>20000) { state.nightMode=false; els.nightBadge.style.display='none'; }
-        
+        // 🌍 Ciclos de Escenario (cada 3000m)
+        if(d >= state.lastScenarioDist + 3000) {
+          let idx = scenarios.indexOf(state.scenario);
+          state.scenario = scenarios[(idx + 1) % scenarios.length];
+          state.lastScenarioDist = d;
+          scenarioBadge.textContent = `🌍 ${state.scenario.toUpperCase()}`;
+          scenarioBadge.style.display = 'inline-block';
+          if(state.scenario==='night') els.nightBadge.style.display='inline-block';
+          else els.nightBadge.style.display='none';
+        }
+
         if(!state.iceMode && d>=state.lastIceDist+4000) { state.iceMode=true; state.iceStart=Date.now(); state.lastIceDist=d; els.iceBadge.style.display='inline-block'; }
-        if(state.iceMode && Date.now()-state.iceStart>15000) { state.iceMode=false; els.iceBadge.style.display='none'; }
+        if(state.iceMode && Date.now()-state.iceStart>15000) { state.iceMode=false; els.iceBadge.style.display='none'; state.snow=[]; }
 
         if(!state.warningNarrow && !state.narrowed && d>=state.lastNarrowDist+3000) {
-          state.warningNarrow = true;
-          state.warningNarrowEnd = Date.now() + 2000;
-          audio.playWarningSiren();
-          warningPanel.style.display = 'block';
+          state.warningNarrow = true; state.warningNarrowEnd = Date.now() + 2000;
+          audio.playWarningSiren(); warningPanel.style.display = 'block';
         }
         if(state.warningNarrow && Date.now() >= state.warningNarrowEnd) {
-          state.warningNarrow = false;
-          state.narrowed = true;
-          state.narrowStart = Date.now();
-          state.targetRoadW = state.baseRoadW * 0.60;
-          els.narrowBadge.style.display = 'inline-block';
+          state.warningNarrow = false; state.narrowed = true; state.narrowStart = Date.now();
+          state.targetRoadW = state.baseRoadW * 0.60; els.narrowBadge.style.display = 'inline-block';
           warningPanel.style.display = 'none';
         }
         if(state.narrowed && Date.now()-state.narrowStart>30000) { 
-          state.narrowed=false; 
-          state.targetRoadW=state.baseRoadW; 
-          els.narrowBadge.style.display='none';
+          state.narrowed=false; state.targetRoadW=state.baseRoadW; els.narrowBadge.style.display='none';
           state.lastNarrowDist = d;
         }
 
         state.currentRoadW = lerp(state.currentRoadW, state.targetRoadW, 0.06);
         state.currentRoadX = (canvas.width - state.currentRoadW)/2;
 
+        // 🧊 Física
         let isIce = state.iceMode;
         let accel = isIce ? 0.035 : 0.18;
         let friction = isIce ? 0.93 : 0.72;
-
         let dx = state.player.targetX - state.player.x;
         state.player.vx += dx * accel;
         state.player.x += state.player.vx;
         state.player.vx *= friction;
+        if(state.player.x < state.currentRoadX) { state.player.x = state.currentRoadX; state.player.vx *= -0.4; }
+        if(state.player.x > state.currentRoadX + state.currentRoadW - state.player.w) { state.player.x = state.currentRoadX + state.currentRoadW - state.player.w; state.player.vx *= -0.4; }
 
-        if(state.player.x < state.currentRoadX) { 
-          state.player.x = state.currentRoadX; state.player.vx *= -0.4; 
+        // ❄️ Nieve
+        if(state.iceMode && Math.random() < 0.4 && state.snow.length < 60) {
+          state.snow.push({ x: Math.random()*canvas.width, y: -5, speed: 2+Math.random()*3, size: 1+Math.random()*2, drift: (Math.random()-0.5)*1 });
         }
-        if(state.player.x > state.currentRoadX + state.currentRoadW - state.player.w) { 
-          state.player.x = state.currentRoadX + state.currentRoadW - state.player.w; state.player.vx *= -0.4; 
+        for(let i=state.snow.length-1; i>=0; i--) {
+          let s = state.snow[i]; s.y += s.speed; s.x += s.drift + Math.sin(Date.now()/200)*0.5;
+          if(s.y > canvas.height) state.snow.splice(i,1);
         }
 
-        // 🚗 Spawn tráfico
+        // ⚡ PowerUps Spawn
+        if(Math.random() < 0.004 && state.powerups.length < 2) {
+          let type = Math.random() < 0.5 ? 'shield' : 'turbo';
+          let px = state.currentRoadX + 10 + Math.random()*(state.currentRoadW - 40);
+          state.powerups.push({ x:px, y:-40, w:30, h:30, type, speed: state.speed*0.6 });
+        }
+        // PowerUps Update & Colisión
+        for(let i=state.powerups.length-1; i>=0; i--) {
+          let p = state.powerups[i]; p.y += state.speed - p.speed;
+          let m=5;
+          if(state.player.x+m < p.x+p.w-m && state.player.x+state.player.w-m > p.x+m && 
+             state.player.y+m < p.y+p.h-m && state.player.y+state.player.h-m > p.y+m) {
+            if(p.type==='shield') { state.hasShield=true; audio.playPowerUp('shield'); shieldIcon.classList.add('active'); }
+            else { state.isTurbo=true; state.turboEnd=Date.now()+3000; audio.playPowerUp('turbo'); turboIcon.classList.add('active'); }
+            state.powerups.splice(i,1); continue;
+          }
+          if(p.y > canvas.height+50) state.powerups.splice(i,1);
+        }
+        // Turbo expiration
+        if(state.isTurbo && Date.now() > state.turboEnd) {
+          state.isTurbo=false; turboIcon.classList.remove('active');
+        }
+
+        // 🚗 Tráfico
         let lastY = state.obstacles.length > 0 ? state.obstacles[state.obstacles.length-1].y : 250;
         let spawnRate = 0.038 + (state.score / 18000); 
-        if(state.nightMode) spawnRate += 0.025;
+        if(state.scenario==='night') spawnRate += 0.025;
         if(state.narrowed) spawnRate *= 0.85;
 
         if((lastY > 110 || state.obstacles.length === 0) && Math.random() < spawnRate && state.obstacles.length < 5) {
           let count = Math.random() < 0.35 ? (Math.random() < 0.2 ? 3 : 2) : 1;
           if(state.narrowed) count = 1;
-
           let placedX = [];
           for(let c=0; c<count; c++) {
             let px, attempts=0, valid=false;
             while(!valid && attempts<15) {
               px = state.currentRoadX + 12 + Math.random() * (state.currentRoadW - state.player.w - 24);
-              valid = placedX.every(x => Math.abs(px - x) > state.player.w * 0.85);
-              attempts++;
+              valid = placedX.every(x => Math.abs(px - x) > state.player.w * 0.85); attempts++;
             }
             if(valid) {
               placedX.push(px);
               let isFast = Math.random() < 0.18;
-              
-              // 📈 DIFICULTAD PROGRESIVA: +15% velocidad enemigos cada 200m
               let speedMultiplier = 1 + Math.floor(d / 200) * 0.15;
-              let baseFactor = isFast ? 0.12 : 0.5;
-              let relSpd = state.speed * baseFactor * speedMultiplier;
-
+              let relSpd = state.speed * (isFast ? 0.12 : 0.5) * speedMultiplier;
               let col = isFast ? '#ff2200' : ['#00d2be','#061954','#ff8000','#ff87bc','#0090ff','#33ff33','#cccccc'][Math.floor(Math.random()*7)];
               state.obstacles.push({ x:px, y:-state.player.h-50-(c*60), w:state.player.w, h:state.player.h, speed:relSpd, c:col, passed:false });
             }
           }
         }
 
+        // Colisión Obstáculos
         for(let i=state.obstacles.length-1; i>=0; i--) {
-          let o=state.obstacles[i]; 
-          o.y += state.speed - o.speed;
+          let o=state.obstacles[i]; o.y += state.speed - o.speed;
           let p=state.player, m=4;
-          if(p.x+m<o.x+o.w-m && p.x+p.w-m>o.x+m && p.y+m<o.y+o.h-m && p.y+p.h-m>o.y+m) { triggerCrash(); return; }
+          if(p.x+m<o.x+o.w-m && p.x+p.w-m>o.x+m && p.y+m<o.y+o.h-m && p.y+p.h-m>o.y+m) {
+            if(state.hasShield) {
+              state.hasShield=false; shieldIcon.classList.remove('active');
+              audio.playShieldBreak(); createExplosion(p.x+p.w/2, p.y+p.h/2);
+              state.obstacles.splice(i,1); continue; // Sobrevive
+            }
+            triggerCrash(); return;
+          }
           if(state.running && !o.passed && o.y>p.y+p.h) { o.passed=true; state.score+=15; audio.playPass(); }
           if(o.y>canvas.height+100) state.obstacles.splice(i,1);
         }
@@ -412,14 +527,17 @@
       els.finalScore.textContent = `Distancia: ${d} m`;
       els.gameOver.classList.remove('hidden'); els.title.classList.add('hidden');
       warningPanel.style.display = 'none';
+      shieldIcon.classList.remove('active'); turboIcon.classList.remove('active');
     }
 
     function draw() {
       try {
         ctx.clearRect(0,0,canvas.width,canvas.height); 
         drawEnv();
+        drawSnow();
+        drawPowerups();
         state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c));
-        if(!state.exploding) drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color);
+        if(!state.exploding) { drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color); drawPlayerEffects(); }
         if(state.particles.length>0) {
           for(let i=state.particles.length-1;i>=0;i--) { let p=state.particles[i]; p.x+=p.vx; p.y+=p.vy; p.life-=0.018; if(p.life<=0) state.particles.splice(i,1); }
           state.particles.forEach(p=>{ ctx.globalAlpha=p.life; ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.s,0,Math.PI*2); ctx.fill(); }); ctx.globalAlpha=1;
@@ -431,21 +549,20 @@
     function loop() { update(); draw(); if(state.running || state.exploding) requestAnimationFrame(loop); }
     function startGame() {
       audio.init(); audio.startEngine(); audio.startMusic();
-      state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[];
+      state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.powerups=[]; state.snow=[];
       state.running=true; state.exploding=false; 
-      state.nightMode=false; state.lastNightDist=0; 
-      state.narrowed=false; state.lastNarrowDist=0; 
-      state.warningNarrow=false;
-      state.iceMode=false; state.lastIceDist=0;
+      state.scenario='base'; state.lastScenarioDist=0; scenarioBadge.textContent='🌍 BASE'; scenarioBadge.style.display='inline-block';
+      state.nightMode=false; state.lastNightDist=0; els.nightBadge.style.display='none';
+      state.narrowed=false; state.lastNarrowDist=0; state.warningNarrow=false; els.narrowBadge.style.display='none';
+      state.iceMode=false; state.lastIceDist=0; els.iceBadge.style.display='none';
+      state.hasShield=false; state.isTurbo=false; shieldIcon.classList.remove('active'); turboIcon.classList.remove('active');
       state.targetRoadW=state.baseRoadW; state.currentRoadW=state.baseRoadW;
-      els.nightBadge.style.display='none'; els.narrowBadge.style.display='none'; els.iceBadge.style.display='none';
       els.score.textContent='0 m';
       els.gameOver.classList.add('hidden'); els.title.classList.remove('hidden'); els.startBtn.classList.add('hidden');
       warningPanel.style.display = 'none';
       resize();
       state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2;
-      state.player.targetX = state.player.x;
-      state.player.vx = 0;
+      state.player.targetX = state.player.x; state.player.vx = 0;
       loop();
     }
 
