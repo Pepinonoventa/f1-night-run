@@ -78,7 +78,7 @@
     </div>
     <br>
     <button id="startBtn" class="btn">🏁 ARRANCAR</button>
-    <p style="font-size:10px; opacity:0.5; margin-top:2px;">👆 Arrastra para moverte</p>
+    <p style="font-size:10px; opacity:0.5; margin-top:2px;">👆 Arrastra o usa ← →</p>
     
     <div id="gameOverPanel" class="panel hidden">
       <h2>💥 CRASH!</h2>
@@ -222,6 +222,7 @@
     }
     window.addEventListener('resize', resize); resize();
 
+    // 👆 CONTROLES TÁCTILES
     let drag=false, dOff=0;
     canvas.addEventListener('touchstart', e=>{ 
       e.preventDefault(); if(!state.running) return; 
@@ -234,6 +235,18 @@
     }, {passive:false});
     canvas.addEventListener('touchend', ()=>drag=false); 
     canvas.addEventListener('touchcancel', ()=>drag=false);
+
+    // ⌨️ CONTROLES TECLADO (Flechas)
+    let keys = { left: false, right: false };
+    window.addEventListener('keydown', (e) => {
+      if (!state.running) return;
+      if (e.key === 'ArrowLeft') { keys.left = true; e.preventDefault(); }
+      if (e.key === 'ArrowRight') { keys.right = true; e.preventDefault(); }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft') keys.left = false;
+      if (e.key === 'ArrowRight') keys.right = false;
+    });
 
     function drawF1(x,y,w,h,col) {
       ctx.save(); ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(x+3,y+4,w,h);
@@ -345,6 +358,14 @@
         let accel = isIce ? 0.035 : 0.18;
         let friction = isIce ? 0.93 : 0.72;
 
+        // ⌨️ Entrada de teclado
+        if (keys.left) state.player.targetX -= 8;
+        if (keys.right) state.player.targetX += 8;
+
+        // Mantener targetX dentro de la carretera
+        state.player.targetX = Math.max(state.currentRoadX, Math.min(state.player.targetX, state.currentRoadX + state.currentRoadW - state.player.w));
+
+        // Física de movimiento
         let dx = state.player.targetX - state.player.x;
         state.player.vx += dx * accel;
         state.player.x += state.player.vx;
@@ -352,9 +373,11 @@
 
         if(state.player.x < state.currentRoadX) { 
           state.player.x = state.currentRoadX; state.player.vx *= -0.4; 
+          state.player.targetX = state.currentRoadX; 
         }
         if(state.player.x > state.currentRoadX + state.currentRoadW - state.player.w) { 
           state.player.x = state.currentRoadX + state.currentRoadW - state.player.w; state.player.vx *= -0.4; 
+          state.player.targetX = state.currentRoadX + state.currentRoadW - state.player.w; 
         }
 
         if(state.iceMode && Math.random() < 0.4 && state.snow.length < 60) {
@@ -387,7 +410,6 @@
               placedX.push(px);
               let isFast = Math.random() < 0.18;
               
-              // ✅ VELOCIDAD DIRECTA HACIA ABAJO (Aumenta cada 600m)
               let downSpeed = 4.5 + (Math.floor(d / 600) * 1.0);
               if (isFast) downSpeed *= 1.4;
 
