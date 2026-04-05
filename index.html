@@ -9,7 +9,7 @@
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body {
-      width:100%; height:100%; overflow:hidden; background:#0a0a0f; touch-action:none;
+      width:100%; height:100%; overflow:hidden; background:#000; touch-action:none;
       -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; font-family:system-ui; color:#fff;
     }
     canvas { display:block; width:100%; height:100%; }
@@ -185,7 +185,7 @@
     }
     window.addEventListener('resize', resize); resize();
 
-    // Controles táctiles (ahora usan targetX para física)
+    // Controles táctiles
     let drag=false, dOff=0;
     canvas.addEventListener('touchstart', e=>{ 
       e.preventDefault(); if(!state.running) return; 
@@ -211,12 +211,12 @@
 
     function drawEnv() {
       const rw=state.currentRoadW, rx=state.currentRoadX;
-      // Césped / Fondo
-      ctx.fillStyle=state.nightMode?(state.iceMode?'#0a1520':'#0a0f1a'):(state.iceMode?'#1a3a40':'#2d8a35'); 
+      // Fondo base (se verá solo a través de las luces)
+      ctx.fillStyle=state.nightMode?(state.iceMode?'#050a10':'#0a0a0a'):(state.iceMode?'#1a3a40':'#2d8a35'); 
       ctx.fillRect(0,0,canvas.width,canvas.height);
       
       // Asfalto
-      ctx.fillStyle=state.nightMode?(state.iceMode?'#151f2a':'#1c1c24'):(state.iceMode?'#253540':'#333'); 
+      ctx.fillStyle=state.nightMode?(state.iceMode?'#101820':'#1a1a1a'):(state.iceMode?'#253540':'#333'); 
       ctx.fillRect(rx,0,rw,canvas.height);
       
       // Kerbs
@@ -226,92 +226,60 @@
         ctx.fillRect(rx-7,y,7,kH); ctx.fillRect(rx+rw,y,7,kH); 
       }
       // Línea central
-      ctx.strokeStyle=state.nightMode?'#445':'#fff'; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
+      ctx.strokeStyle=state.nightMode?'#444':'#fff'; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
       ctx.beginPath(); ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,canvas.height); ctx.stroke(); ctx.setLineDash([]);
       
-      // Bordes estrechamiento
       if(state.narrowed) {
         ctx.strokeStyle='#ffaa00'; ctx.lineWidth=3; ctx.setLineDash([12,8]); ctx.lineDashOffset=-state.roadOffset;
         ctx.beginPath(); ctx.moveTo(rx+5,0); ctx.lineTo(rx+5,canvas.height); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(rx+rw-5,0); ctx.lineTo(rx+rw-5,canvas.height); ctx.stroke(); ctx.setLineDash([]);
       }
-      // Efecto hielo sutil en carretera
       if(state.iceMode) {
-        ctx.fillStyle='rgba(180,220,255,0.04)'; ctx.fillRect(rx,0,rw,canvas.height);
+        ctx.fillStyle='rgba(180,220,255,0.05)'; ctx.fillRect(rx,0,rw,canvas.height);
       }
     }
 
-    // 💡 FAROS HIPERREALISTAS
+    // 💡 EFECTO LUCES RETRO (Imagen ID: 2)
     function drawNight() {
       if(!state.nightMode) return; 
       ctx.save();
       
-      // 1. Oscuridad base
-      ctx.fillStyle = 'rgba(2,3,8,0.88)';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-
-      const cx = state.player.x + state.player.w/2;
-      const cy = state.player.y + state.player.h*0.1;
-      const len = 360;
-      const hw = 130;
-
-      // Función para dibujar un haz
-      const drawBeam = (offsetX) => {
-        const x = cx + offsetX;
-        
-        // Máscara de recorte (hace visible lo de debajo)
-        ctx.globalCompositeOperation = 'destination-out';
-        let cut = ctx.createLinearGradient(x, cy, x, cy - len);
-        cut.addColorStop(0, 'rgba(255,255,255,1)');
-        cut.addColorStop(0.1, 'rgba(255,255,255,0.98)');
-        cut.addColorStop(0.35, 'rgba(255,255,255,0.75)');
-        cut.addColorStop(0.7, 'rgba(255,255,255,0.3)');
-        cut.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = cut;
-        ctx.beginPath();
-        ctx.moveTo(x - hw/2, cy);
-        ctx.quadraticCurveTo(x - hw/1.3, cy - len*0.5, x - hw/2.2, cy - len);
-        ctx.lineTo(x + hw/2.2, cy - len);
-        ctx.quadraticCurveTo(x + hw/1.3, cy - len*0.5, x + hw/2, cy);
-        ctx.fill();
-
-        // Capa de luz cálida (volumen)
-        ctx.globalCompositeOperation = 'screen';
-        let glow = ctx.createLinearGradient(x, cy, x, cy - len);
-        glow.addColorStop(0, 'rgba(255,248,230,0.85)');
-        glow.addColorStop(0.15, 'rgba(255,240,200,0.5)');
-        glow.addColorStop(0.4, 'rgba(255,230,160,0.25)');
-        glow.addColorStop(0.75, 'rgba(255,215,120,0.08)');
-        glow.addColorStop(1, 'rgba(255,200,100,0)');
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.moveTo(x - hw/2, cy);
-        ctx.quadraticCurveTo(x - hw/1.3, cy - len*0.5, x - hw/2.2, cy - len);
-        ctx.lineTo(x + hw/2.2, cy - len);
-        ctx.quadraticCurveTo(x + hw/1.3, cy - len*0.5, x + hw/2, cy);
-        ctx.fill();
-      };
-
-      // Dibujar ambos haces
-      drawBeam(-state.player.w/3.2);
-      drawBeam(state.player.w/3.2);
-
-      // Hotspot (brillo intenso en los faros)
-      ctx.globalCompositeOperation = 'screen';
-      let hot = ctx.createRadialGradient(cx - state.player.w/3, cy, 2, cx - state.player.w/3, cy, 25);
-      hot.addColorStop(0, 'rgba(255,255,255,0.9)'); hot.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = hot; ctx.beginPath(); ctx.arc(cx - state.player.w/3, cy, 25, 0, Math.PI*2); ctx.fill();
-      
-      let hot2 = ctx.createRadialGradient(cx + state.player.w/3, cy, 2, cx + state.player.w/3, cy, 25);
-      hot2.addColorStop(0, 'rgba(255,255,255,0.9)'); hot2.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = hot2; ctx.beginPath(); ctx.arc(cx + state.player.w/3, cy, 25, 0, Math.PI*2); ctx.fill();
-
-      // Vignette suave para enfocar la mirada
+      // 1. Oscurecer todo el canvas
       ctx.globalCompositeOperation = 'source-over';
-      let vig = ctx.createRadialGradient(cx, cy, 100, cx, cy, canvas.height*0.8);
-      vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.6)');
-      ctx.fillStyle = vig; ctx.fillRect(0,0,canvas.width,canvas.height);
-
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // 2. Recortar el cono de luz (destination-out hace transparente el negro, revelando lo de abajo)
+      ctx.globalCompositeOperation = 'destination-out';
+      
+      const cx = state.player.x + state.player.w/2;
+      const cy = state.player.y + 10; // Origen de los faros
+      const len = 320; // Longitud del haz
+      const width = state.currentRoadW * 0.9; // Ancho del haz
+      
+      // Degradado para el cono (Sólido cerca del coche -> Transparente al final)
+      let grad = ctx.createLinearGradient(cx, cy, cx, cy - len);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      grad.addColorStop(0.2, 'rgba(255, 255, 255, 0.95)');
+      grad.addColorStop(0.7, 'rgba(255, 255, 255, 0.6)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      
+      // Dibujar forma triangular del cono
+      ctx.beginPath();
+      ctx.moveTo(cx, cy); // Punta en el coche
+      ctx.lineTo(cx - width/2, cy - len); // Esquina izquierda
+      ctx.lineTo(cx + width/2, cy - len); // Esquina derecha
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+      
+      // Añadir "glow" alrededor de los faros
+      let glow = ctx.createRadialGradient(cx, cy, 5, cx, cy, 40);
+      glow.addColorStop(0, 'rgba(255,255,255,0.8)');
+      glow.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI*2); ctx.fill();
+      
       ctx.restore();
     }
 
@@ -326,7 +294,6 @@
 
         const d = Math.floor(state.score);
         
-        // Ciclos de eventos
         if(!state.nightMode && d>=state.lastNightDist+2000) { state.nightMode=true; state.nightStart=Date.now(); state.lastNightDist=d; els.nightBadge.style.display='inline-block'; }
         if(state.nightMode && Date.now()-state.nightStart>20000) { state.nightMode=false; els.nightBadge.style.display='none'; }
         
@@ -336,28 +303,24 @@
         if(!state.iceMode && d>=state.lastIceDist+4000) { state.iceMode=true; state.iceStart=Date.now(); state.lastIceDist=d; els.iceBadge.style.display='inline-block'; }
         if(state.iceMode && Date.now()-state.iceStart>15000) { state.iceMode=false; els.iceBadge.style.display='none'; }
 
-        // Interpolación carretera
         state.currentRoadW = lerp(state.currentRoadW, state.targetRoadW, 0.06);
         state.currentRoadX = (canvas.width - state.currentRoadW)/2;
 
-        // 🧊 FÍSICA DE MOVIMIENTO (Inercia y derrape)
+        // 🧊 FÍSICA DE MOVIMIENTO
         let isIce = state.iceMode;
-        let accel = isIce ? 0.035 : 0.18;  // Velocidad de respuesta al dedo
-        let friction = isIce ? 0.93 : 0.72; // Cuánto resbala/frena
+        let accel = isIce ? 0.035 : 0.18;
+        let friction = isIce ? 0.93 : 0.72;
 
         let dx = state.player.targetX - state.player.x;
         state.player.vx += dx * accel;
         state.player.x += state.player.vx;
         state.player.vx *= friction;
 
-        // Límites con rebote suave
         if(state.player.x < state.currentRoadX) { 
-          state.player.x = state.currentRoadX; 
-          state.player.vx *= -0.4; 
+          state.player.x = state.currentRoadX; state.player.vx *= -0.4; 
         }
         if(state.player.x > state.currentRoadX + state.currentRoadW - state.player.w) { 
-          state.player.x = state.currentRoadX + state.currentRoadW - state.player.w; 
-          state.player.vx *= -0.4; 
+          state.player.x = state.currentRoadX + state.currentRoadW - state.player.w; state.player.vx *= -0.4; 
         }
 
         // Spawn tráfico
@@ -388,7 +351,6 @@
           }
         }
 
-        // Obstáculos & Colisión
         for(let i=state.obstacles.length-1; i>=0; i--) {
           let o=state.obstacles[i]; 
           o.y += state.speed - o.speed;
@@ -444,7 +406,11 @@
       els.nightBadge.style.display='none'; els.narrowBadge.style.display='none'; els.iceBadge.style.display='none';
       els.score.textContent='0 m';
       els.gameOver.classList.add('hidden'); els.title.classList.remove('hidden'); els.startBtn.classList.add('hidden');
-      resize(); loop();
+      resize();
+      state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2;
+      state.player.targetX = state.player.x;
+      state.player.vx = 0;
+      loop();
     }
 
     els.startBtn.addEventListener('click', startGame);
