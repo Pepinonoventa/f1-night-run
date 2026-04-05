@@ -65,7 +65,7 @@
       100% { transform:translate(-50%,-50%) rotate(0deg); }
     }
 
-    /* Indicadores de PowerUps */
+    /* Indicador de Escudo */
     #powerups {
       position:absolute; top:env(safe-area-inset-top, 70px); right:10px;
       display:flex; flex-direction:column; gap:8px; pointer-events:none;
@@ -74,9 +74,8 @@
       width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
       font-size:16px; background:rgba(0,0,0,0.7); border:2px solid #555; opacity:0.3; transition:0.2s;
     }
-    .pu-icon.active { opacity:1; border-color:#fff; box-shadow:0 0 8px currentColor; transform:scale(1.1); }
+    .pu-icon.active { opacity:1; border-color:#00ccff; box-shadow:0 0 8px #00ccff; transform:scale(1.1); }
     #shieldIcon { color:#00ccff; }
-    #turboIcon { color:#ffaa00; }
   </style>
 </head>
 <body>
@@ -86,7 +85,7 @@
       <span id="score">0 m</span> |
       <span id="lastScore" style="color:#aaa;">Últ: 0m</span> |
       <span id="highScore" style="color:#ffd700;">🏆 0m</span>
-      <span id="scenarioBadge" class="badge"> BASE</span>
+      <span id="scenarioBadge" class="badge">🌍 BASE</span>
       <span id="nightBadge" class="badge">🌙 NOCHE</span>
       <span id="narrowBadge" class="badge">🚧 ESTRECHO</span>
       <span id="iceBadge" class="badge">🧊 HIELO</span>
@@ -104,7 +103,6 @@
 
   <div id="powerups">
     <div id="shieldIcon" class="pu-icon">🛡️</div>
-    <div id="turboIcon" class="pu-icon">⚡</div>
   </div>
 
   <div id="warningPanel">
@@ -197,20 +195,14 @@
           g2.gain.setValueAtTime(0.08, t); g2.gain.linearRampToValueAtTime(0, t+1); o2.start(t); o2.stop(t+1);
         } catch(e){}
       },
-      playPowerUp(type) {
+      playShieldGet() {
         if(!this.ctx) return; const t=this.ctx.currentTime;
         try {
           const o=this.ctx.createOscillator(), g=this.ctx.createGain();
-          o.type = type==='shield' ? 'sine' : 'square';
-          o.connect(g); g.connect(this.ctx.destination);
-          if(type==='shield') {
-            o.frequency.setValueAtTime(400,t); o.frequency.linearRampToValueAtTime(800,t+0.15);
-            g.gain.setValueAtTime(0.15,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.2);
-          } else {
-            o.frequency.setValueAtTime(200,t); o.frequency.linearRampToValueAtTime(600,t+0.1); o.frequency.linearRampToValueAtTime(900,t+0.2);
-            g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
-          }
-          o.start(t); o.stop(t+0.3);
+          o.type='sine'; o.connect(g); g.connect(this.ctx.destination);
+          o.frequency.setValueAtTime(400,t); o.frequency.linearRampToValueAtTime(800,t+0.15);
+          g.gain.setValueAtTime(0.15,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.2);
+          o.start(t); o.stop(t+0.2);
         } catch(e){}
       },
       playShieldBreak() {
@@ -229,7 +221,6 @@
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
     const warningPanel = document.getElementById('warningPanel');
     const shieldIcon = document.getElementById('shieldIcon');
-    const turboIcon = document.getElementById('turboIcon');
     const scenarioBadge = document.getElementById('scenarioBadge');
     
     const els = {
@@ -251,7 +242,7 @@
       narrowed:false, narrowStart:0, lastNarrowDist:0,
       warningNarrow:false, warningNarrowEnd:0,
       iceMode:false, iceStart:0, lastIceDist:0,
-      hasShield:false, isTurbo:false, turboEnd:0,
+      hasShield:false,
       baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0
     };
 
@@ -300,12 +291,10 @@
       const rw=state.currentRoadW, rx=state.currentRoadX;
       let grass='#2d8a35', road='#333', kerb1='#cc0000', kerb2='#ffffff', center='#fff';
       
-      //  Escenarios
       if(state.scenario==='desert') { grass='#d4a373'; road='#c2b280'; kerb1='#ffaa00'; kerb2='#222'; center='#ffaa00'; }
       else if(state.scenario==='mountain') { grass='#2c3e50'; road='#34495e'; kerb1='#ecf0f1'; kerb2='#7f8c8d'; center='#ecf0f1'; }
       else if(state.scenario==='night') { grass='#050505'; road='#111'; kerb1='#cc0000'; kerb2='#ffffff'; center='#444'; }
       
-      // 🧊 Override Hielo
       if(state.iceMode) { grass='#0a1520'; road='#6c9ebf'; kerb1='#00ccff'; kerb2='#ffffff'; center='#00ccff'; }
 
       ctx.fillStyle=grass; ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -344,10 +333,10 @@
       state.powerups.forEach(p => {
         ctx.save();
         ctx.beginPath(); ctx.arc(p.x+p.w/2, p.y+p.h/2, p.w/2+4, 0, Math.PI*2);
-        ctx.fillStyle = p.type==='shield' ? 'rgba(0,200,255,0.2)' : 'rgba(255,170,0,0.2)';
-        ctx.fill(); ctx.strokeStyle = p.type==='shield' ? '#00ccff' : '#ffaa00'; ctx.lineWidth=2; ctx.stroke();
+        ctx.fillStyle = 'rgba(0,200,255,0.2)'; ctx.fill(); 
+        ctx.strokeStyle = '#00ccff'; ctx.lineWidth=2; ctx.stroke();
         ctx.font = `${p.w*0.7}px Arial`; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillStyle='#fff'; ctx.fillText(p.type==='shield'?'🛡️':'', p.x+p.w/2, p.y+p.h/2);
+        ctx.fillStyle='#fff'; ctx.fillText('🛡️', p.x+p.w/2, p.y+p.h/2);
         ctx.restore();
       });
     }
@@ -361,19 +350,11 @@
     }
 
     function drawPlayerEffects() {
-      const cx = state.player.x + state.player.w/2;
-      const cy = state.player.y + state.player.h/2;
-      // Escudo visual
       if(state.hasShield) {
+        const cx = state.player.x + state.player.w/2;
+        const cy = state.player.y + state.player.h/2;
         ctx.strokeStyle='rgba(0,200,255,0.6)'; ctx.lineWidth=3;
         ctx.beginPath(); ctx.arc(cx, cy, state.player.w*0.9, 0, Math.PI*2); ctx.stroke();
-      }
-      // Turbo llamas
-      if(state.isTurbo) {
-        ctx.fillStyle=`rgba(255,${100+Math.random()*100},0,${0.5+Math.random()*0.5})`;
-        ctx.beginPath(); ctx.moveTo(cx-8, cy+state.player.h/2); 
-        ctx.lineTo(cx, cy+state.player.h/2+20+Math.random()*15); 
-        ctx.lineTo(cx+8, cy+state.player.h/2); ctx.fill();
       }
     }
 
@@ -382,27 +363,27 @@
     // 🔹 LÓGICA PRINCIPAL
     function update() {
       try {
-        let speedMod = state.isTurbo ? 1.8 : 1;
-        state.speed = (state.baseSpeed + (state.score / 1200)) * speedMod; 
+        state.speed = state.baseSpeed + (state.score / 1200); 
         state.roadOffset += state.speed; 
         audio.updateEngine(state.speed);
 
         const d = Math.floor(state.score);
         
-        // 🌍 Ciclos de Escenario (cada 3000m)
+        // 🌍 Escenarios cada 3000m
         if(d >= state.lastScenarioDist + 3000) {
           let idx = scenarios.indexOf(state.scenario);
           state.scenario = scenarios[(idx + 1) % scenarios.length];
           state.lastScenarioDist = d;
           scenarioBadge.textContent = `🌍 ${state.scenario.toUpperCase()}`;
           scenarioBadge.style.display = 'inline-block';
-          if(state.scenario==='night') els.nightBadge.style.display='inline-block';
-          else els.nightBadge.style.display='none';
+          els.nightBadge.style.display = state.scenario==='night' ? 'inline-block' : 'none';
         }
 
+        // 🧊 Hielo
         if(!state.iceMode && d>=state.lastIceDist+4000) { state.iceMode=true; state.iceStart=Date.now(); state.lastIceDist=d; els.iceBadge.style.display='inline-block'; }
         if(state.iceMode && Date.now()-state.iceStart>15000) { state.iceMode=false; els.iceBadge.style.display='none'; state.snow=[]; }
 
+        // 🚧 Estrechamiento
         if(!state.warningNarrow && !state.narrowed && d>=state.lastNarrowDist+3000) {
           state.warningNarrow = true; state.warningNarrowEnd = Date.now() + 2000;
           audio.playWarningSiren(); warningPanel.style.display = 'block';
@@ -440,27 +421,22 @@
           if(s.y > canvas.height) state.snow.splice(i,1);
         }
 
-        // ⚡ PowerUps Spawn
-        if(Math.random() < 0.004 && state.powerups.length < 2) {
-          let type = Math.random() < 0.5 ? 'shield' : 'turbo';
+        // 🛡️ PowerUps (Solo Escudo)
+        if(Math.random() < 0.005 && state.powerups.length < 2 && !state.hasShield) {
           let px = state.currentRoadX + 10 + Math.random()*(state.currentRoadW - 40);
-          state.powerups.push({ x:px, y:-40, w:30, h:30, type, speed: state.speed*0.6 });
+          state.powerups.push({ x:px, y:-40, w:30, h:30, type:'shield', speed: state.speed*0.6 });
         }
-        // PowerUps Update & Colisión
         for(let i=state.powerups.length-1; i>=0; i--) {
           let p = state.powerups[i]; p.y += state.speed - p.speed;
           let m=5;
           if(state.player.x+m < p.x+p.w-m && state.player.x+state.player.w-m > p.x+m && 
              state.player.y+m < p.y+p.h-m && state.player.y+state.player.h-m > p.y+m) {
-            if(p.type==='shield') { state.hasShield=true; audio.playPowerUp('shield'); shieldIcon.classList.add('active'); }
-            else { state.isTurbo=true; state.turboEnd=Date.now()+3000; audio.playPowerUp('turbo'); turboIcon.classList.add('active'); }
+            state.hasShield = true; 
+            audio.playShieldGet(); 
+            shieldIcon.classList.add('active');
             state.powerups.splice(i,1); continue;
           }
           if(p.y > canvas.height+50) state.powerups.splice(i,1);
-        }
-        // Turbo expiration
-        if(state.isTurbo && Date.now() > state.turboEnd) {
-          state.isTurbo=false; turboIcon.classList.remove('active');
         }
 
         // 🚗 Tráfico
@@ -498,7 +474,7 @@
             if(state.hasShield) {
               state.hasShield=false; shieldIcon.classList.remove('active');
               audio.playShieldBreak(); createExplosion(p.x+p.w/2, p.y+p.h/2);
-              state.obstacles.splice(i,1); continue; // Sobrevive
+              state.obstacles.splice(i,1); continue;
             }
             triggerCrash(); return;
           }
@@ -527,7 +503,7 @@
       els.finalScore.textContent = `Distancia: ${d} m`;
       els.gameOver.classList.remove('hidden'); els.title.classList.add('hidden');
       warningPanel.style.display = 'none';
-      shieldIcon.classList.remove('active'); turboIcon.classList.remove('active');
+      shieldIcon.classList.remove('active');
     }
 
     function draw() {
@@ -552,10 +528,10 @@
       state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.powerups=[]; state.snow=[];
       state.running=true; state.exploding=false; 
       state.scenario='base'; state.lastScenarioDist=0; scenarioBadge.textContent='🌍 BASE'; scenarioBadge.style.display='inline-block';
-      state.nightMode=false; state.lastNightDist=0; els.nightBadge.style.display='none';
+      els.nightBadge.style.display='none';
       state.narrowed=false; state.lastNarrowDist=0; state.warningNarrow=false; els.narrowBadge.style.display='none';
       state.iceMode=false; state.lastIceDist=0; els.iceBadge.style.display='none';
-      state.hasShield=false; state.isTurbo=false; shieldIcon.classList.remove('active'); turboIcon.classList.remove('active');
+      state.hasShield=false; shieldIcon.classList.remove('active');
       state.targetRoadW=state.baseRoadW; state.currentRoadW=state.baseRoadW;
       els.score.textContent='0 m';
       els.gameOver.classList.add('hidden'); els.title.classList.remove('hidden'); els.startBtn.classList.add('hidden');
