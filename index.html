@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -10,7 +11,7 @@
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body {
       width:100%; height:100%; overflow:hidden; 
-      background: #050505; /* Fondo negro puro para que las zonas oscuras se vean negras */
+      background: #000000; /* Fondo negro puro */
       touch-action:none;
       -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; 
       font-family:system-ui; color:#fff;
@@ -18,7 +19,6 @@
     canvas { 
       display:block; width:100%; height:100%; 
       touch-action:none; 
-      /* Importante: Sin sombras ni bordes para que las luces funcionen en iOS */
     }
     
     #ui {
@@ -218,12 +218,12 @@
 
     function drawEnv() {
       const rw=state.currentRoadW, rx=state.currentRoadX;
-      // Fondo base (se verá solo a través de las luces)
-      ctx.fillStyle=state.nightMode?'#050505':'#2d8a35'; // Negro puro en noche para que resalte
+      // Fondo base
+      ctx.fillStyle=state.nightMode?'#111111':'#2d8a35'; // Gris claro en noche para contraste
       ctx.fillRect(0,0,canvas.width,canvas.height);
       
       // Asfalto
-      ctx.fillStyle=state.nightMode?'#1a1a1a':'#333'; 
+      ctx.fillStyle=state.nightMode?'#2a2a2a':'#333'; 
       ctx.fillRect(rx,0,rw,canvas.height);
       
       // Kerbs
@@ -233,7 +233,7 @@
         ctx.fillRect(rx-7,y,7,kH); ctx.fillRect(rx+rw,y,7,kH); 
       }
       // Línea central
-      ctx.strokeStyle=state.nightMode?'#444':'#fff'; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
+      ctx.strokeStyle=state.nightMode?'#555':'#fff'; ctx.lineWidth=4; ctx.setLineDash([35,35]); ctx.lineDashOffset=-state.roadOffset;
       ctx.beginPath(); ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,canvas.height); ctx.stroke(); ctx.setLineDash([]);
       
       if(state.narrowed) {
@@ -242,46 +242,43 @@
         ctx.beginPath(); ctx.moveTo(rx+rw-5,0); ctx.lineTo(rx+rw-5,canvas.height); ctx.stroke(); ctx.setLineDash([]);
       }
       if(state.iceMode) {
-        ctx.fillStyle='rgba(180,220,255,0.05)'; ctx.fillRect(rx,0,rw,canvas.height);
+        ctx.fillStyle='rgba(180,220,255,0.1)'; ctx.fillRect(rx,0,rw,canvas.height);
       }
     }
 
-    // 💡 LUCES RETRO (Método Máscara Infalible)
+    // 💡 LUCES RETRO (MÉTODO MÁSCARA VECTORIAL - 100% ESTABLE EN iOS)
     function drawNight() {
       if(!state.nightMode) return; 
       
-      // 1. Dibujar el cono de luz sobre el juego ya dibujado
-      // destination-in: Mantiene los píxeles del juego SOLO donde se superponen con la forma blanca
+      // 1. Dibujar una caja negra que cubre TODA la pantalla, PERO con un agujero en forma de cono
       ctx.save();
-      ctx.globalCompositeOperation = 'destination-in';
+      ctx.beginPath();
       
+      // A. El área negra (Toda la pantalla)
+      ctx.rect(0, 0, canvas.width, canvas.height);
+      
+      // B. El agujero (El cono de luz)
       const cx = state.player.x + state.player.w/2;
       const cy = state.player.y + 5;
       const len = 320; 
       const width = state.currentRoadW * 0.85; 
       
-      let grad = ctx.createLinearGradient(cx, cy, cx, cy - len);
-      grad.addColorStop(0, 'rgba(255, 255, 255, 1)'); // Sólido cerca del coche
-      grad.addColorStop(0.6, 'rgba(255, 255, 255, 0.8)');
-      grad.addColorStop(1, 'rgba(255, 255, 255, 0)'); // Transparente al final
-      
-      ctx.fillStyle = grad;
-      ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx - width/2, cy - len);
       ctx.lineTo(cx + width/2, cy - len);
       ctx.closePath();
-      ctx.fill();
       
-      // Añadir un poco de brillo en la base (bombilla)
-      ctx.globalCompositeOperation = 'source-over'; // Volver a normal para dibujar encima
-      let glow = ctx.createRadialGradient(cx, cy, 2, cx, cy, 30);
+      // Fill 'evenodd' rellena el rectángulo pero DEJA VACÍO el triángulo del cono
+      ctx.fillStyle = '#000000';
+      ctx.fill('evenodd');
+      ctx.restore();
+
+      // 2. Dibujar el brillo de la bombilla ENCIMA del juego (dentro del cono)
+      let glow = ctx.createRadialGradient(cx, cy, 5, cx, cy, 40);
       glow.addColorStop(0, 'rgba(255,255,255,0.6)');
       glow.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(cx, cy, 30, 0, Math.PI*2); ctx.fill();
-      
-      ctx.restore();
+      ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI*2); ctx.fill();
     }
 
     function createExplosion(x,y) { for(let i=0;i<60;i++) state.particles.push({x,y, vx:(Math.random()-0.5)*15, vy:(Math.random()-0.5)*15, life:1, c:Math.random()>0.5?'#ffaa00':'#ff3300', s:Math.random()*4.5+2}); }
