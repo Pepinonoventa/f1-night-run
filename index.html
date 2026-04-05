@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -429,7 +430,8 @@
               placedX.push(px);
               let isFast = Math.random() < 0.18;
               
-              let downSpeed = 4.5 + (Math.floor(d / 600) * 1.0);
+              // ✅ DIFICULTAD: Aumenta cada 900 metros
+              let downSpeed = 4.5 + (Math.floor(d / 900) * 1.0);
               if (isFast) downSpeed *= 1.4;
 
               let col = isFast ? '#ff2200' : ['#00d2be','#061954','#ff8000','#ff87bc','#0090ff','#33ff33','#cccccc'][Math.floor(Math.random()*7)];
