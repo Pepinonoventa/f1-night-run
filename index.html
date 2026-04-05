@@ -35,19 +35,38 @@
     @keyframes pulse { from { opacity:0.8; } to { opacity:1; box-shadow:0 0 6px currentColor; } }
 
     .btn {
-      padding: 8px 16px; font-size: 12px; font-weight: bold; background: linear-gradient(to bottom, #ff3333, #cc0000); 
-      border: 2px solid #fff; border-radius: 12px; color: #fff; cursor: pointer; margin-top:3px;
-      text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+      padding: 10px 20px; font-size: 13px; font-weight: bold; background: linear-gradient(to bottom, #ff3333, #cc0000); 
+      border: 2px solid #fff; border-radius: 12px; color: #fff; cursor: pointer; margin-top:10px;
+      text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(0,0,0,0.6);
     }
     .btn:active { transform: scale(0.96); }
     .hidden { display:none !important; }
     
-    .panel {
+    /* 🎨 PANTALLA GAME OVER REDISEÑADA */
+    #gameOverPanel {
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-      background:rgba(6,6,10,0.95); border:1px solid #333; border-radius:12px;
-      padding:14px; width:78%; max-width:260px; text-align:center; z-index:20; box-shadow:0 8px 20px rgba(0,0,0,0.8);
+      background:rgba(8,8,12,0.98); border:2px solid #ff3333; border-radius:16px;
+      padding:24px 16px; width:90%; max-width:340px; text-align:center; z-index:20; 
+      box-shadow:0 0 40px rgba(255,50,50,0.3);
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    .panel h2 { margin-bottom:5px; color:#ff3333; font-size:15px; }
+    @keyframes popIn { from { transform:translate(-50%,-50%) scale(0.8); opacity:0; } to { transform:translate(-50%,-50%) scale(1); opacity:1; } }
+    
+    #gameOverPanel h2 { 
+      margin:0 0 8px 0; color:#ff3333; 
+      font-size: clamp(40px, 10vw, 56px); font-weight: 900; 
+      letter-spacing: 3px; text-transform: uppercase; 
+      text-shadow: 0 0 15px rgba(255,50,50,0.6); line-height:1;
+    }
+    #finalScore {
+      font-size: clamp(48px, 12vw, 72px); font-weight: 900;
+      color: #ffffff; margin: 5px 0 20px 0; line-height: 1.1;
+      text-shadow: 0 4px 12px rgba(0,0,0,0.8);
+    }
+    #finalScore span {
+      display: block; font-size: 0.35em; color: #888; font-weight: 600;
+      letter-spacing: 2px; margin-bottom: 2px; text-transform: uppercase;
+    }
 
     #warningPanel {
       position:absolute; top:38%; left:50%; transform:translate(-50%,-50%);
@@ -80,9 +99,9 @@
     <button id="startBtn" class="btn">🏁 ARRANCAR</button>
     <p style="font-size:10px; opacity:0.5; margin-top:2px;">👆 Arrastra o usa ← →</p>
     
-    <div id="gameOverPanel" class="panel hidden">
-      <h2>💥 CRASH!</h2>
-      <p id="finalScore" style="font-size:14px; margin-bottom:6px;">Distancia: 0m</p>
+    <div id="gameOverPanel" class="hidden">
+      <h2>GAME OVER</h2>
+      <p id="finalScore"><span>DISTANCIA</span>0m</p>
       <button id="restartBtn" class="btn">🔄 REINICIAR</button>
     </div>
   </div>
@@ -236,7 +255,7 @@
     canvas.addEventListener('touchend', ()=>drag=false); 
     canvas.addEventListener('touchcancel', ()=>drag=false);
 
-    // ⌨️ CONTROLES TECLADO (Flechas)
+    // ⌨️ CONTROLES TECLADO
     let keys = { left: false, right: false };
     window.addEventListener('keydown', (e) => {
       if (!state.running) return;
@@ -446,7 +465,10 @@
       state.lastScore = d; localStorage.setItem('f1_last', d);
       els.lastScore.textContent = `Últ: ${d}m`;
       if(d > state.highScore) { state.highScore=d; localStorage.setItem('f1_highscore',d); els.highScore.textContent=`🏆 ${d}m`; }
-      els.finalScore.textContent = `Distancia: ${d} m`;
+      
+      // 🎯 ACTUALIZAR PANTALLA GIGANTE
+      els.finalScore.innerHTML = `<span>DISTANCIA</span>${d}m`;
+      
       els.gameOver.classList.remove('hidden'); els.title.classList.add('hidden');
       warningPanel.style.display = 'none';
     }
