@@ -32,6 +32,7 @@
     #nightBadge { background:#0a0a2a; color:#66ccff; border:1px solid #66ccff; }
     #narrowBadge { background:#2a1a0a; color:#ffaa00; border:1px solid #ffaa00; }
     #iceBadge { background:#0a1a2a; color:#00ffff; border:1px solid #00ffff; }
+    #oilBadge { background:#1a0a0a; color:#ff6600; border:1px solid #ff6600; }
     @keyframes pulse { from { opacity:0.8; } to { opacity:1; box-shadow:0 0 6px currentColor; } }
 
     .btn {
@@ -42,7 +43,6 @@
     .btn:active { transform: scale(0.96); }
     .hidden { display:none !important; }
     
-    /* 🎨 PANTALLA DE TÍTULO */
     #titleScreen {
       position:absolute; top:0; left:0; width:100%; height:100%;
       background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2a 100%);
@@ -136,7 +136,6 @@
       letter-spacing: 1px;
     }
     
-    /* 🎨 PANTALLA GAME OVER */
     #gameOverPanel {
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
       background:rgba(8,8,12,0.98); border:2px solid #ff3333; border-radius:16px;
@@ -179,10 +178,8 @@
   </style>
 </head>
 <body>
-  <!-- 🎮 PANTALLA DE TÍTULO -->
   <div id="titleScreen">
-    <!-- Reemplaza 'cover.png' con la URL de tu imagen -->
-    <img src="cover.png" alt="F1 Night Run" class="titleImage" onerror="this.style.display='none'">
+    <img src="cover.jpg" alt="F1 Night Run" class="titleImage" onerror="this.style.display='none'">
     <div class="titleOverlay"></div>
     <div class="titleContent">
       <h1 class="titleLogo">F1 NIGHT RUN</h1>
@@ -201,6 +198,7 @@
       <span id="nightBadge" class="badge">🌙 NOCHE</span>
       <span id="narrowBadge" class="badge">🚧 ESTRECHO</span>
       <span id="iceBadge" class="badge">🧊 HIELO</span>
+      <span id="oilBadge" class="badge">🛢️ ACEITE</span>
     </div>
     <br>
     <button id="startBtn" class="btn hidden">🏁 ARRANCAR</button>
@@ -300,6 +298,18 @@
           o2.frequency.setValueAtTime(1200, t); o2.frequency.linearRampToValueAtTime(1500, t+0.4); o2.frequency.linearRampToValueAtTime(1200, t+0.8);
           g2.gain.setValueAtTime(0.08, t); g2.gain.linearRampToValueAtTime(0, t+1); o2.start(t); o2.stop(t+1);
         } catch(e){}
+      },
+      playOilSkid() {
+        if(!this.ctx) return; const t=this.ctx.currentTime;
+        try {
+          const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+          o.type='sawtooth'; o.connect(g); g.connect(this.ctx.destination);
+          o.frequency.setValueAtTime(200, t);
+          o.frequency.exponentialRampToValueAtTime(80, t+0.3);
+          g.gain.setValueAtTime(0.15, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t+0.3);
+          o.start(t); o.stop(t+0.3);
+        } catch(e){}
       }
     };
 
@@ -313,7 +323,8 @@
       titleStartBtn: document.getElementById('titleStartBtn'),
       startBtn: document.getElementById('startBtn'), restartBtn: document.getElementById('restartBtn'),
       score: document.getElementById('score'), lastScore: document.getElementById('lastScore'), highScore: document.getElementById('highScore'),
-      nightBadge: document.getElementById('nightBadge'), narrowBadge: document.getElementById('narrowBadge'), iceBadge: document.getElementById('iceBadge'),
+      nightBadge: document.getElementById('nightBadge'), narrowBadge: document.getElementById('narrowBadge'), 
+      iceBadge: document.getElementById('iceBadge'), oilBadge: document.getElementById('oilBadge'),
       title: document.getElementById('title'), gameOver: document.getElementById('gameOverPanel'), finalScore: document.getElementById('finalScore')
     };
 
@@ -323,11 +334,12 @@
       highScore: parseInt(localStorage.getItem('f1_highscore')) || 0, 
       baseSpeed: 6.5, speed: 6.5, roadOffset: 0,
       player:{x:0,y:0,w:0,h:0,vx:0,targetX:0,color:'#ff0000'}, 
-      obstacles:[], particles:[], snow:[],
+      obstacles:[], particles:[], snow:[], oilSpills:[],
       nightMode:false, nightStart:0, lastNightDist:0,
       narrowed:false, narrowStart:0, lastNarrowDist:0,
       warningNarrow:false, warningNarrowEnd:0,
       iceMode:false, iceStart:0, lastIceDist:0,
+      onOil:false, oilVibration:0, oilTimer:0,
       baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0
     };
 
@@ -383,6 +395,44 @@
       ctx.fillStyle='#fff'; ctx.fillRect(x+w*0.15,y+h-10,w*0.7,6); ctx.fillRect(x+w*0.15,y+h*0.1,w*0.7,4);
       ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(x+w/2,y+h*0.5,w*0.18,0,Math.PI*2); ctx.fill();
       ctx.fillStyle='#ffff00'; ctx.beginPath(); ctx.arc(x+w/2,y+h*0.45,w*0.1,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+
+    // 🛢️ DIBUJAR MANCHA DE ACEITE
+    function drawOilSpill(spill) {
+      ctx.save();
+      // Mancha principal (oscura y brillante)
+      let gradient = ctx.createRadialGradient(
+        spill.x + spill.w/2, spill.y + spill.h/2, 0,
+        spill.x + spill.w/2, spill.y + spill.h/2, spill.w/2
+      );
+      gradient.addColorStop(0, 'rgba(30, 20, 10, 0.9)');
+      gradient.addColorStop(0.5, 'rgba(50, 30, 15, 0.6)');
+      gradient.addColorStop(1, 'rgba(80, 60, 30, 0)');
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.ellipse(
+        spill.x + spill.w/2, 
+        spill.y + spill.h/2, 
+        spill.w/2, 
+        spill.h/2, 
+        0, 0, Math.PI*2
+      );
+      ctx.fill();
+      
+      // Brillo característico del aceite
+      ctx.fillStyle = 'rgba(100, 80, 50, 0.3)';
+      ctx.beginPath();
+      ctx.ellipse(
+        spill.x + spill.w/2 - spill.w*0.1, 
+        spill.y + spill.h/2 - spill.h*0.1, 
+        spill.w*0.25, 
+        spill.h*0.2, 
+        -0.3, 0, Math.PI*2
+      );
+      ctx.fill();
+      
+      ctx.restore();
     }
 
     function drawEnv() {
@@ -492,6 +542,27 @@
         let accel = isIce ? 0.035 : 0.18;
         let friction = isIce ? 0.93 : 0.72;
 
+        // 🛢️ EFECTO DE ACEITE - VIBRACIÓN Y DESLIZAMIENTO
+        if(state.onOil) {
+          state.oilTimer--;
+          state.oilVibration = Math.sin(Date.now()/30) * 3; // Vibración lateral
+          
+          // Reducir fricción para que resbale
+          friction = 0.98;
+          accel = 0.08;
+          
+          // Movimiento aleatorio adicional
+          if(Math.random() < 0.3) {
+            state.player.vx += (Math.random()-0.5) * 2;
+          }
+          
+          if(state.oilTimer <= 0) {
+            state.onOil = false;
+            state.oilVibration = 0;
+            els.oilBadge.style.display = 'none';
+          }
+        }
+
         // ⌨️ Entrada de teclado
         if (keys.left) state.player.targetX -= 8;
         if (keys.right) state.player.targetX += 8;
@@ -502,7 +573,7 @@
         // Física de movimiento
         let dx = state.player.targetX - state.player.x;
         state.player.vx += dx * accel;
-        state.player.x += state.player.vx;
+        state.player.x += state.player.vx + state.oilVibration; // Añadir vibración
         state.player.vx *= friction;
 
         if(state.player.x < state.currentRoadX) { 
@@ -520,6 +591,21 @@
         for(let i=state.snow.length-1; i>=0; i--) {
           let s = state.snow[i]; s.y += s.speed; s.x += s.drift + Math.sin(Date.now()/200)*0.5;
           if(s.y > canvas.height) state.snow.splice(i,1);
+        }
+
+        // 🛢️ SPAWN DE MANCHAS DE ACEITE (aleatorio, no muy frecuente)
+        let lastOilY = state.oilSpills.length > 0 ? state.oilSpills[state.oilSpills.length-1].y : 300;
+        // Aparecen cada 800-1500 metros aproximadamente
+        if(lastOilY > 200 && Math.random() < 0.0008 && state.oilSpills.length < 3) {
+          let oilW = state.player.w * 1.2;
+          let oilH = oilW * 0.6;
+          let oilX = state.currentRoadX + 20 + Math.random() * (state.currentRoadW - oilW - 40);
+          state.oilSpills.push({
+            x: oilX,
+            y: -100,
+            w: oilW,
+            h: oilH
+          });
         }
 
         // 🚗 Spawn Tráfico
@@ -551,6 +637,31 @@
               let col = isFast ? '#ff2200' : ['#00d2be','#061954','#ff8000','#ff87bc','#0090ff','#33ff33','#cccccc'][Math.floor(Math.random()*7)];
               state.obstacles.push({ x:px, y:-state.player.h-50-(c*60), w:state.player.w, h:state.player.h, speed:downSpeed, c:col, passed:false });
             }
+          }
+        }
+
+        // Actualizar y dibujar manchas de aceite
+        for(let i=state.oilSpills.length-1; i>=0; i--) {
+          let oil = state.oilSpills[i];
+          oil.y += state.speed;
+          
+          // Eliminar si sale de pantalla
+          if(oil.y > canvas.height + 50) {
+            state.oilSpills.splice(i, 1);
+            continue;
+          }
+          
+          // Detectar colisión con el coche
+          if(!state.onOil && 
+             state.player.x < oil.x + oil.w &&
+             state.player.x + state.player.w > oil.x &&
+             state.player.y < oil.y + oil.h &&
+             state.player.y + state.player.h > oil.y) {
+            state.onOil = true;
+            state.oilTimer = 40; // Duración del efecto (~0.6 segundos)
+            state.oilVibration = 0;
+            els.oilBadge.style.display = 'inline-block';
+            audio.playOilSkid();
           }
         }
 
@@ -593,6 +704,10 @@
         ctx.clearRect(0,0,canvas.width,canvas.height); 
         drawEnv();
         drawSnow();
+        
+        // Dibujar manchas de aceite
+        state.oilSpills.forEach(oil => drawOilSpill(oil));
+        
         state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c));
         if(!state.exploding) drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color);
         if(state.particles.length>0) {
@@ -612,11 +727,11 @@
       ui.classList.remove('hidden');
       
       audio.init(); audio.startEngine(); audio.startMusic();
-      state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.snow=[];
-      state.running=true; state.exploding=false; 
+      state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.snow=[]; state.oilSpills=[];
+      state.running=true; state.exploding=false; state.onOil=false; state.oilVibration=0; state.oilTimer=0;
       state.nightMode=false; state.lastNightDist=0; els.nightBadge.style.display='none';
       state.narrowed=false; state.lastNarrowDist=0; state.warningNarrow=false; els.narrowBadge.style.display='none';
-      state.iceMode=false; state.lastIceDist=0; els.iceBadge.style.display='none';
+      state.iceMode=false; state.lastIceDist=0; els.iceBadge.style.display='none'; els.oilBadge.style.display='none';
       state.targetRoadW=state.baseRoadW; state.currentRoadW=state.baseRoadW;
       els.score.textContent='0 m';
       els.gameOver.classList.add('hidden');
