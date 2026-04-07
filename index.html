@@ -42,6 +42,101 @@
     .btn:active { transform: scale(0.96); }
     .hidden { display:none !important; }
     
+    /* 🎨 PANTALLA DE TÍTULO */
+    #titleScreen {
+      position:absolute; top:0; left:0; width:100%; height:100%;
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2a 100%);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      z-index:100; overflow:hidden;
+    }
+    #titleScreen::before {
+      content:''; position:absolute; top:0; left:0; right:0; bottom:0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,0.15),
+        rgba(0,0,0,0.15) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events:none;
+    }
+    .titleImage {
+      width:100%; height:100%;
+      object-fit:cover;
+      position:absolute; top:0; left:0;
+    }
+    .titleOverlay {
+      position:absolute; top:0; left:0; right:0; bottom:0;
+      background: rgba(0,0,0,0.4);
+      z-index:1;
+    }
+    .titleContent {
+      position:relative; z-index:2;
+      text-align:center;
+      animation: titlePulse 2s ease-in-out infinite;
+    }
+    @keyframes titlePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+    .titleLogo {
+      font-size: clamp(40px, 12vw, 80px);
+      font-weight: 900;
+      font-style: italic;
+      background: linear-gradient(180deg, #ff66cc 0%, #66ccff 50%, #ff66cc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 30px rgba(255,102,204,0.5);
+      margin-bottom: 20px;
+      letter-spacing: 4px;
+      animation: neonFlicker 1.5s ease-in-out infinite;
+    }
+    @keyframes neonFlicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.95; }
+    }
+    .titleSubtitle {
+      font-size: clamp(14px, 4vw, 20px);
+      color: #66ccff;
+      margin-bottom: 40px;
+      text-shadow: 0 0 10px rgba(102,204,255,0.8);
+      letter-spacing: 2px;
+    }
+    .titleBtn {
+      padding: 15px 40px;
+      font-size: 18px;
+      font-weight: bold;
+      background: linear-gradient(135deg, #ff3333, #ff6600);
+      border: 3px solid #fff;
+      border-radius: 16px;
+      color: #fff;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      box-shadow: 0 0 20px rgba(255,51,51,0.6), 0 0 40px rgba(255,102,0,0.4);
+      transition: all 0.3s ease;
+      animation: btnGlow 2s ease-in-out infinite;
+    }
+    @keyframes btnGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(255,51,51,0.6), 0 0 40px rgba(255,102,0,0.4); }
+      50% { box-shadow: 0 0 30px rgba(255,51,51,0.8), 0 0 60px rgba(255,102,0,0.6); }
+    }
+    .titleBtn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 40px rgba(255,51,51,0.8), 0 0 80px rgba(255,102,0,0.6);
+    }
+    .titleBtn:active {
+      transform: scale(0.98);
+    }
+    .titleInstructions {
+      margin-top: 30px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      letter-spacing: 1px;
+    }
+    
+    /* 🎨 PANTALLA GAME OVER */
     #gameOverPanel {
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
       background:rgba(8,8,12,0.98); border:2px solid #ff3333; border-radius:16px;
@@ -84,7 +179,20 @@
   </style>
 </head>
 <body>
-  <div id="ui">
+  <!-- 🎮 PANTALLA DE TÍTULO -->
+  <div id="titleScreen">
+    <!-- Reemplaza 'cover.png' con la URL de tu imagen -->
+    <img src="cover.png" alt="F1 Night Run" class="titleImage" onerror="this.style.display='none'">
+    <div class="titleOverlay"></div>
+    <div class="titleContent">
+      <h1 class="titleLogo">F1 NIGHT RUN</h1>
+      <p class="titleSubtitle">🏎️ Carrera Nocturna Extrema 🧊</p>
+      <button id="titleStartBtn" class="titleBtn">🏁 INICIAR CARRERA</button>
+      <p class="titleInstructions">👆 Arrastra o usa ← → para moverte</p>
+    </div>
+  </div>
+
+  <div id="ui" class="hidden">
     <h1 id="title">F1 NIGHT RUN</h1>
     <div id="scoreBoard">
       <span id="score">0 m</span> |
@@ -95,8 +203,7 @@
       <span id="iceBadge" class="badge">🧊 HIELO</span>
     </div>
     <br>
-    <button id="startBtn" class="btn">🏁 ARRANCAR</button>
-    <p style="font-size:10px; opacity:0.5; margin-top:2px;">👆 Arrastra o usa ← →</p>
+    <button id="startBtn" class="btn hidden">🏁 ARRANCAR</button>
     
     <div id="gameOverPanel" class="hidden">
       <h2>GAME OVER</h2>
@@ -199,8 +306,11 @@
     // 🔹 UI & ESTADO
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
     const warningPanel = document.getElementById('warningPanel');
+    const titleScreen = document.getElementById('titleScreen');
+    const ui = document.getElementById('ui');
     
     const els = {
+      titleStartBtn: document.getElementById('titleStartBtn'),
       startBtn: document.getElementById('startBtn'), restartBtn: document.getElementById('restartBtn'),
       score: document.getElementById('score'), lastScore: document.getElementById('lastScore'), highScore: document.getElementById('highScore'),
       nightBadge: document.getElementById('nightBadge'), narrowBadge: document.getElementById('narrowBadge'), iceBadge: document.getElementById('iceBadge'),
@@ -347,7 +457,6 @@
         if(state.nightMode && Date.now()-state.nightStart>20000) { state.nightMode=false; els.nightBadge.style.display='none'; }
         
         // 🧊 HIELO (4000m, dura 15s) - CON DESACTIVACIÓN ANTICIPADA DE NOCHE
-        // Desactivar modo noche ~3 segundos antes de activar hielo (~15 metros antes)
         if(!state.iceMode && state.nightMode && d > state.lastIceDist + 4000 - 15) {
           state.nightMode = false;
           els.nightBadge.style.display = 'none';
@@ -475,7 +584,7 @@
       
       els.finalScore.innerHTML = `<span>DISTANCIA</span>${d}m`;
       
-      els.gameOver.classList.remove('hidden'); els.title.classList.add('hidden');
+      els.gameOver.classList.remove('hidden');
       warningPanel.style.display = 'none';
     }
 
@@ -495,7 +604,13 @@
     }
 
     function loop() { update(); draw(); if(state.running || state.exploding) requestAnimationFrame(loop); }
+    
+    // 🎮 INICIAR JUEGO DESDE PANTALLA DE TÍTULO
     function startGame() {
+      // Ocultar pantalla de título y mostrar UI
+      titleScreen.classList.add('hidden');
+      ui.classList.remove('hidden');
+      
       audio.init(); audio.startEngine(); audio.startMusic();
       state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.snow=[];
       state.running=true; state.exploding=false; 
@@ -504,16 +619,28 @@
       state.iceMode=false; state.lastIceDist=0; els.iceBadge.style.display='none';
       state.targetRoadW=state.baseRoadW; state.currentRoadW=state.baseRoadW;
       els.score.textContent='0 m';
-      els.gameOver.classList.add('hidden'); els.title.classList.remove('hidden'); els.startBtn.classList.add('hidden');
+      els.gameOver.classList.add('hidden');
       warningPanel.style.display = 'none';
       resize();
       state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2;
       state.player.targetX = state.player.x; state.player.vx = 0;
       loop();
     }
+    
+    // 🔘 VOLVER A PANTALLA DE TÍTULO
+    function showTitleScreen() {
+      titleScreen.classList.remove('hidden');
+      ui.classList.add('hidden');
+      state.running = false;
+      audio.stopMusic(); audio.stopEngine();
+    }
 
-    els.startBtn.addEventListener('click', startGame);
-    els.restartBtn.addEventListener('click', startGame);
+    els.titleStartBtn.addEventListener('click', startGame);
+    els.restartBtn.addEventListener('click', () => {
+      els.gameOver.classList.add('hidden');
+      startGame();
+    });
+    
     resize(); draw();
   </script>
 </body>
