@@ -42,7 +42,6 @@
     .btn:active { transform: scale(0.96); }
     .hidden { display:none !important; }
     
-    /* 🎨 PANTALLA GAME OVER REDISEÑADA */
     #gameOverPanel {
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
       background:rgba(8,8,12,0.98); border:2px solid #ff3333; border-radius:16px;
@@ -343,9 +342,16 @@
 
         const d = Math.floor(state.score);
         
+        // 🌙 NOCHE (2000m, dura 20s)
         if(!state.nightMode && d>=state.lastNightDist+2000) { state.nightMode=true; state.nightStart=Date.now(); state.lastNightDist=d; els.nightBadge.style.display='inline-block'; }
         if(state.nightMode && Date.now()-state.nightStart>20000) { state.nightMode=false; els.nightBadge.style.display='none'; }
         
+        // 🧊 HIELO (4000m, dura 15s) - CON DESACTIVACIÓN ANTICIPADA DE NOCHE
+        // Desactivar modo noche ~3 segundos antes de activar hielo (~15 metros antes)
+        if(!state.iceMode && state.nightMode && d > state.lastIceDist + 4000 - 15) {
+          state.nightMode = false;
+          els.nightBadge.style.display = 'none';
+        }
         if(!state.iceMode && d>=state.lastIceDist+4000) { state.iceMode=true; state.iceStart=Date.now(); state.lastIceDist=d; els.iceBadge.style.display='inline-block'; }
         if(state.iceMode && Date.now()-state.iceStart>15000) { state.iceMode=false; els.iceBadge.style.display='none'; state.snow=[]; }
 
@@ -467,7 +473,6 @@
       els.lastScore.textContent = `Últ: ${d}m`;
       if(d > state.highScore) { state.highScore=d; localStorage.setItem('f1_highscore',d); els.highScore.textContent=`🏆 ${d}m`; }
       
-      // 🎯 ACTUALIZAR PANTALLA GIGANTE
       els.finalScore.innerHTML = `<span>DISTANCIA</span>${d}m`;
       
       els.gameOver.classList.remove('hidden'); els.title.classList.add('hidden');
