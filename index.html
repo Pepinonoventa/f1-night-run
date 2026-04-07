@@ -43,7 +43,6 @@
     .btn:active { transform: scale(0.96); }
     .hidden { display:none !important; }
     
-    /* 🛡️ CONTADOR DE ESCUDO */
     #shieldCounter {
       position:absolute; top:env(safe-area-inset-top, 85px); right:10px;
       background:rgba(0,100,200,0.8); border:2px solid #00ccff; border-radius:10px;
@@ -60,7 +59,6 @@
     #shieldCounter .shieldTime { font-size:18px; font-weight:bold; color:#fff; text-shadow:0 0 8px rgba(0,204,255,0.8); }
     #shieldCounter .shieldLabel { font-size:9px; color:#66ccff; text-transform:uppercase; letter-spacing:1px; }
     
-    /* 🚀 CONTADOR DE DISPARO TRIPLE */
     #tripleShotCounter {
       position:absolute; top:env(safe-area-inset-top, 165px); right:10px;
       background:rgba(200,50,0,0.8); border:2px solid #ff6600; border-radius:10px;
@@ -388,9 +386,8 @@
       lastAmbulanceDist: -1300,
       shieldActive:false, shieldTimer:0, shieldMaxTime:8000,
       lastShieldDist: -400,
-      // 🚀 DISPARO TRIPLE
       tripleShotActive:false, tripleShotTimer:0, tripleShotMaxTime:15000,
-      pendingTripleShotSpawn:false, // 🆕 Indica que hay un spawn pendiente esperando a que termine la noche
+      pendingTripleShotSpawn:false,
       lastTripleShotDist: -1200,
       tripleShotSpawned:false,
       baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0,
@@ -563,19 +560,50 @@
       }
     }
 
-    function drawNight() {
-      if(!state.nightMode) return; 
+    // ✅ NUEVA FUNCIÓN DE NOCHE: Se aplica COMO CAPA FINAL sobre todo el juego
+    function applyNightOverlay() {
+      if(!state.nightMode) return;
+      
       ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, 0, canvas.width, canvas.height);
+      
+      // 1. Pintar capa negra semitransparente sobre TODO el juego ya dibujado
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // 2. "Borrar" el cono de luz usando destination-out para revelar el juego debajo
+      ctx.globalCompositeOperation = 'destination-out';
+      
       const cx = state.player.x + state.player.w/2;
       const cy = state.player.y + 5;
-      const len = 320; const width = state.currentRoadW * 0.85; 
-      ctx.moveTo(cx, cy); ctx.lineTo(cx - width/2, cy - len); ctx.lineTo(cx + width/2, cy - len); ctx.closePath();
-      ctx.fillStyle = '#000000'; ctx.fill('evenodd'); ctx.restore();
-      let glow = ctx.createRadialGradient(cx, cy, 5, cx, cy, 40);
-      glow.addColorStop(0, 'rgba(255,255,255,0.6)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI*2); ctx.fill();
+      const len = 320;
+      const width = state.currentRoadW * 0.85;
+      
+      // Gradiente para el cono (sólido cerca del coche, transparente al final)
+      let grad = ctx.createLinearGradient(cx, cy, cx, cy - len);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.85)');
+      grad.addColorStop(0.7, 'rgba(255, 255, 255, 0.4)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx - width/2, cy - len);
+      ctx.lineTo(cx + width/2, cy - len);
+      ctx.closePath();
+      ctx.fill();
+      
+      // 3. Añadir brillo de faro
+      ctx.globalCompositeOperation = 'destination-out';
+      let glow = ctx.createRadialGradient(cx, cy, 2, cx, cy, 25);
+      glow.addColorStop(0, 'rgba(255,255,255,0.8)');
+      glow.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 25, 0, Math.PI*2);
+      ctx.fill();
+      
+      ctx.restore();
     }
 
     function drawSnow() {
@@ -594,26 +622,22 @@
 
         const d = Math.floor(state.score);
         
-        // 🌙 NOCHE
         if(!state.nightMode && d>=state.lastNightDist+2000) { state.nightMode=true; state.nightStart=Date.now(); state.lastNightDist=d; els.nightBadge.style.display='inline-block'; }
         if(state.nightMode && Date.now()-state.nightStart>20000) { 
           state.nightMode=false; 
           els.nightBadge.style.display='none';
-          // 🚀 Si había un spawn pendiente por la noche, lo ejecutamos ahora
           if(state.pendingTripleShotSpawn) {
             spawnTripleShotPickup();
             state.pendingTripleShotSpawn = false;
           }
         }
         
-        // 🧊 HIELO
         if(!state.iceMode && state.nightMode && d > state.lastIceDist + 4000 - 15) {
           state.nightMode = false; els.nightBadge.style.display = 'none';
         }
         if(!state.iceMode && d>=state.lastIceDist+4000) { state.iceMode=true; state.iceStart=Date.now(); state.lastIceDist=d; els.iceBadge.style.display='inline-block'; }
         if(state.iceMode && Date.now()-state.iceStart>15000) { state.iceMode=false; els.iceBadge.style.display='none'; state.snow=[]; }
 
-        // 🚧 ESTRECHAMIENTO
         if(!state.warningNarrow && !state.narrowed && d>=state.lastNarrowDist+3000) {
           state.warningNarrow = true;
           state.warningNarrowEnd = Date.now() + 2000;
@@ -627,12 +651,10 @@
           state.targetRoadW = state.baseRoadW * 0.60;
           els.narrowBadge.style.display = 'inline-block';
           warningPanel.style.display = 'none';
-          // 🚀 Spawn de disparo triple al estrecharse (si no es de noche)
           if(!state.tripleShotSpawned) {
             if(!state.nightMode) {
               spawnTripleShotPickup();
             } else {
-              // Si es de noche, marcamos que hay un spawn pendiente
               state.pendingTripleShotSpawn = true;
             }
             state.tripleShotSpawned = true;
@@ -649,7 +671,6 @@
         state.currentRoadW = lerp(state.currentRoadW, state.targetRoadW, 0.06);
         state.currentRoadX = (canvas.width - state.currentRoadW)/2;
 
-        // 🛡️ ESCUDO
         if(state.shieldActive) {
           state.shieldTimer -= 16;
           let remaining = Math.max(0, state.shieldTimer / 1000);
@@ -657,7 +678,6 @@
           if(state.shieldTimer <= 0) { state.shieldActive = false; shieldCounter.style.display = 'none'; }
         }
 
-        // 🚀 DISPARO TRIPLE
         if(state.tripleShotActive) {
           state.tripleShotTimer -= 16;
           let remaining = Math.max(0, state.tripleShotTimer / 1000);
@@ -699,7 +719,6 @@
           if(s.y > canvas.height) state.snow.splice(i,1);
         }
 
-        // 🛢️ ACEITE
         let lastOilY = state.oilSpills.length > 0 ? state.oilSpills[state.oilSpills.length-1].y : 300;
         if(lastOilY > 200 && Math.random() < 0.0008 && state.oilSpills.length < 3) {
           let oilW = state.player.w * 1.2;
@@ -708,12 +727,10 @@
           state.oilSpills.push({ x: oilX, y: -100, w: oilW, h: oilH });
         }
 
-        // 🛡️ ESCUDO POWER-UP
         if(d >= state.lastShieldDist + 1200 && state.shieldPickups.length === 0 && !state.shieldActive) {
           spawnShieldPickup();
         }
 
-        // 🚑 AMBULANCIA
         if(d >= state.lastAmbulanceDist + 1800 && state.ambulances.length === 0) {
           let ambW = state.player.w * 1.3;
           let ambH = ambW * 1.8;
@@ -723,7 +740,6 @@
           audio.startAmbulanceSiren();
         }
 
-        // 🚗 TRÁFICO
         let lastY = state.obstacles.length > 0 ? state.obstacles[state.obstacles.length-1].y : 250;
         let spawnRate = 0.038 + (state.score / 18000); 
         if(state.nightMode) spawnRate += 0.025;
@@ -750,7 +766,6 @@
           }
         }
 
-        // Actualizar aceite
         for(let i=state.oilSpills.length-1; i>=0; i--) {
           let oil = state.oilSpills[i];
           oil.y += state.speed;
@@ -762,7 +777,6 @@
           }
         }
 
-        // 🛡️ Power-up escudo
         for(let i=state.shieldPickups.length-1; i>=0; i--) {
           let sp = state.shieldPickups[i];
           sp.y += state.speed * 0.5;
@@ -775,7 +789,6 @@
           }
         }
 
-        // 🚀 Power-up disparo triple (SOLO si no es de noche)
         for(let i=state.tripleShotPickups.length-1; i>=0; i--) {
           let sp = state.tripleShotPickups[i];
           sp.y += state.speed * 0.5;
@@ -789,7 +802,6 @@
           }
         }
 
-        // 🚀 Proyectiles
         for(let i=state.projectiles.length-1; i>=0; i--) {
           let p = state.projectiles[i];
           p.y -= p.speed;
@@ -807,7 +819,6 @@
           }
         }
 
-        // Ambulancias
         for(let i=state.ambulances.length-1; i>=0; i--) {
           let amb = state.ambulances[i];
           amb.y += amb.speed;
@@ -816,7 +827,6 @@
           if(p.x+m<amb.x+amb.w-m && p.x+p.w-m>amb.x+m && p.y+m<amb.y+amb.h-m && p.y+p.h-m>amb.y+m) { triggerCrash(); return; }
         }
 
-        // Obstáculos
         for(let i=state.obstacles.length-1; i>=0; i--) {
           let o=state.obstacles[i]; 
           o.y += o.speed;
@@ -837,7 +847,6 @@
     }
 
     function spawnTripleShotPickup() {
-      // 🚫 NO spawneamos si es de noche
       if(state.nightMode) {
         state.pendingTripleShotSpawn = true;
         return;
@@ -895,27 +904,30 @@
       warningPanel.style.display = 'none';
     }
 
-    // ✅ ORDEN CORRECTO: drawNight() después del fondo, antes de los coches
+    // ✅ ORDEN CORRECTO: Todo el juego PRIMERO, luego la capa de noche AL FINAL
     function draw() {
       try {
+        // 1. Limpiar y dibujar TODO el juego normalmente
         ctx.clearRect(0,0,canvas.width,canvas.height); 
         drawEnv();
-        drawNight();
         drawSnow();
         state.oilSpills.forEach(oil => drawOilSpill(oil));
         state.shieldPickups.forEach(sp => drawShieldPickup(sp));
         state.tripleShotPickups.forEach(sp => drawTripleShotPickup(sp));
         drawProjectiles();
         state.ambulances.forEach(amb => drawAmbulance(amb));
-        state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c));
+        state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c)); // COCHES ENEMIGOS
         if(!state.exploding) {
           drawActiveShield();
-          drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color);
+          drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color); // JUGADOR
         }
         if(state.particles.length>0) {
           for(let i=state.particles.length-1;i>=0;i--) { let p=state.particles[i]; p.x+=p.vx; p.y+=p.vy; p.life-=0.018; if(p.life<=0) state.particles.splice(i,1); }
           state.particles.forEach(p=>{ ctx.globalAlpha=p.life; ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.s,0,Math.PI*2); ctx.fill(); }); ctx.globalAlpha=1;
         }
+        
+        // 2. Aplicar efecto de noche COMO CAPA FINAL (tapando todo excepto el cono)
+        applyNightOverlay();
       } catch(e) { console.warn(e); }
     }
 
