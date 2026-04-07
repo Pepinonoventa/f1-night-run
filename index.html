@@ -224,6 +224,7 @@
     const audio = {
       ctx: null, engine: { osc: null, gain: null, filter: null, active: false },
       music: { playing: false, nextTime: 0, beat: 0, timer: null },
+      ambulance: { interval: null, phase: 0 },
       init() {
         if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         if (this.ctx.state === 'suspended') this.ctx.resume();
@@ -310,6 +311,44 @@
           g.gain.exponentialRampToValueAtTime(0.001, t+0.3);
           o.start(t); o.stop(t+0.3);
         } catch(e){}
+      },
+      // 🚑 SONIDO DE AMBULANCIA
+      startAmbulanceSiren() {
+        if(this.ambulance.interval) return;
+        this.ambulance.phase = 0;
+        this.ambulance.interval = setInterval(() => {
+          if(!this.ctx) return;
+          const t = this.ctx.currentTime;
+          try {
+            const o = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            o.type = 'sawtooth';
+            o.connect(g);
+            g.connect(this.ctx.destination);
+            
+            // Sirena de dos tonos (agudo-grave-agudo)
+            if(this.ambulance.phase === 0) {
+              o.frequency.setValueAtTime(800, t);
+              o.frequency.linearRampToValueAtTime(1000, t+0.3);
+            } else {
+              o.frequency.setValueAtTime(600, t);
+              o.frequency.linearRampToValueAtTime(800, t+0.3);
+            }
+            
+            g.gain.setValueAtTime(0.2, t);
+            g.gain.linearRampToValueAtTime(0.001, t+0.4);
+            o.start(t);
+            o.stop(t+0.4);
+            
+            this.ambulance.phase = 1 - this.ambulance.phase;
+          } catch(e){}
+        }, 500); // Cada 500ms
+      },
+      stopAmbulanceSiren() {
+        if(this.ambulance.interval) {
+          clearInterval(this.ambulance.interval);
+          this.ambulance.interval = null;
+        }
       }
     };
 
@@ -334,12 +373,13 @@
       highScore: parseInt(localStorage.getItem('f1_highscore')) || 0, 
       baseSpeed: 6.5, speed: 6.5, roadOffset: 0,
       player:{x:0,y:0,w:0,h:0,vx:0,targetX:0,color:'#ff0000'}, 
-      obstacles:[], particles:[], snow:[], oilSpills:[],
+      obstacles:[], particles:[], snow:[], oilSpills:[], ambulances:[],
       nightMode:false, nightStart:0, lastNightDist:0,
       narrowed:false, narrowStart:0, lastNarrowDist:0,
       warningNarrow:false, warningNarrowEnd:0,
       iceMode:false, iceStart:0, lastIceDist:0,
       onOil:false, oilVibration:0, oilTimer:0,
+      lastAmbulanceDist: -1300, // Para que la primera salga a los 500m
       baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0
     };
 
@@ -395,6 +435,57 @@
       ctx.fillStyle='#fff'; ctx.fillRect(x+w*0.15,y+h-10,w*0.7,6); ctx.fillRect(x+w*0.15,y+h*0.1,w*0.7,4);
       ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(x+w/2,y+h*0.5,w*0.18,0,Math.PI*2); ctx.fill();
       ctx.fillStyle='#ffff00'; ctx.beginPath(); ctx.arc(x+w/2,y+h*0.45,w*0.1,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+
+    // 🚑 DIBUJAR AMBULANCIA
+    function drawAmbulance(amb) {
+      ctx.save();
+      // Sombra
+      ctx.fillStyle='rgba(0,0,0,0.4)';
+      ctx.fillRect(amb.x+3, amb.y+4, amb.w, amb.h);
+      
+      // Cuerpo de la ambulancia (blanco)
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(amb.x, amb.y, amb.w, amb.h);
+      
+      // Franja naranja/lateral
+      ctx.fillStyle='#ff6600';
+      ctx.fillRect(amb.x, amb.y+amb.h*0.3, amb.w, amb.h*0.2);
+      
+      // Cruz roja (símbolo médico)
+      ctx.fillStyle='#cc0000';
+      let crossX = amb.x + amb.w/2;
+      let crossY = amb.y + amb.h/2;
+      let crossSize = amb.w * 0.25;
+      ctx.fillRect(crossX - crossSize*0.2, crossY - crossSize, crossSize*0.4, crossSize*2);
+      ctx.fillRect(crossX - crossSize, crossY - crossSize*0.2, crossSize*2, crossSize*0.4);
+      
+      // Luces de emergencia (parpadeantes)
+      let flash = Math.floor(Date.now()/100) % 2 === 0;
+      if(flash) {
+        ctx.fillStyle='#ff0000';
+        ctx.beginPath();
+        ctx.arc(amb.x + amb.w*0.25, amb.y + amb.h*0.15, amb.w*0.12, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle='#0000ff';
+        ctx.beginPath();
+        ctx.arc(amb.x + amb.w*0.75, amb.y + amb.h*0.15, amb.w*0.12, 0, Math.PI*2);
+        ctx.fill();
+      }
+      
+      // Ventanas
+      ctx.fillStyle='#111';
+      ctx.fillRect(amb.x + amb.w*0.15, amb.y + amb.h*0.55, amb.w*0.3, amb.h*0.2);
+      ctx.fillRect(amb.x + amb.w*0.55, amb.y + amb.h*0.55, amb.w*0.3, amb.h*0.2);
+      
+      // Ruedas
+      ctx.fillStyle='#111';
+      ctx.fillRect(amb.x - 3, amb.y + amb.h*0.2, 6, amb.h*0.25);
+      ctx.fillRect(amb.x - 3, amb.y + amb.h*0.55, 6, amb.h*0.25);
+      ctx.fillRect(amb.x + amb.w - 3, amb.y + amb.h*0.2, 6, amb.h*0.25);
+      ctx.fillRect(amb.x + amb.w - 3, amb.y + amb.h*0.55, 6, amb.h*0.25);
+      
+      ctx.restore();
     }
 
     // 🛢️ DIBUJAR MANCHA DE ACEITE
@@ -608,6 +699,23 @@
           });
         }
 
+        // 🚑 SPAWN DE AMBULANCIA (500m primera, luego cada 1800m)
+        // Primera ambulancia a los 500m, luego cada 1800m
+        if(d >= state.lastAmbulanceDist + 1800 && state.ambulances.length === 0) {
+          let ambW = state.player.w * 1.3;
+          let ambH = ambW * 1.8;
+          let ambX = state.currentRoadX + state.currentRoadW/2 - ambW/2;
+          state.ambulances.push({
+            x: ambX,
+            y: -200,
+            w: ambW,
+            h: ambH,
+            speed: state.speed * 0.6 // Va más lento que el jugador
+          });
+          state.lastAmbulanceDist = d;
+          audio.startAmbulanceSiren();
+        }
+
         // 🚗 Spawn Tráfico
         let lastY = state.obstacles.length > 0 ? state.obstacles[state.obstacles.length-1].y : 250;
         let spawnRate = 0.038 + (state.score / 18000); 
@@ -665,6 +773,25 @@
           }
         }
 
+        // Actualizar ambulancias
+        for(let i=state.ambulances.length-1; i>=0; i--) {
+          let amb = state.ambulances[i];
+          amb.y += amb.speed;
+          
+          // Eliminar si sale de pantalla
+          if(amb.y > canvas.height + 100) {
+            state.ambulances.splice(i, 1);
+            audio.stopAmbulanceSiren();
+            continue;
+          }
+          
+          // Detectar colisión
+          let p=state.player, m=4;
+          if(p.x+m<amb.x+amb.w-m && p.x+p.w-m>amb.x+m && p.y+m<amb.y+amb.h-m && p.y+p.h-m>amb.y+m) { 
+            triggerCrash(); return; 
+          }
+        }
+
         for(let i=state.obstacles.length-1; i>=0; i--) {
           let o=state.obstacles[i]; 
           o.y += o.speed;
@@ -679,7 +806,7 @@
 
     function triggerCrash() {
       state.running=false; state.exploding=true; 
-      audio.stopMusic(); audio.playCrash();
+      audio.stopMusic(); audio.stopAmbulanceSiren(); audio.playCrash();
       if(navigator.vibrate) navigator.vibrate([150,50,120]);
       createExplosion(state.player.x+state.player.w/2, state.player.y+state.player.h/2);
       warningPanel.style.display = 'none';
@@ -708,6 +835,9 @@
         // Dibujar manchas de aceite
         state.oilSpills.forEach(oil => drawOilSpill(oil));
         
+        // Dibujar ambulancias
+        state.ambulances.forEach(amb => drawAmbulance(amb));
+        
         state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c));
         if(!state.exploding) drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color);
         if(state.particles.length>0) {
@@ -727,8 +857,9 @@
       ui.classList.remove('hidden');
       
       audio.init(); audio.startEngine(); audio.startMusic();
-      state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.snow=[]; state.oilSpills=[];
+      state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.snow=[]; state.oilSpills=[]; state.ambulances=[];
       state.running=true; state.exploding=false; state.onOil=false; state.oilVibration=0; state.oilTimer=0;
+      state.lastAmbulanceDist = -1300; // Primera a los 500m
       state.nightMode=false; state.lastNightDist=0; els.nightBadge.style.display='none';
       state.narrowed=false; state.lastNarrowDist=0; state.warningNarrow=false; els.narrowBadge.style.display='none';
       state.iceMode=false; state.lastIceDist=0; els.iceBadge.style.display='none'; els.oilBadge.style.display='none';
@@ -747,7 +878,7 @@
       titleScreen.classList.remove('hidden');
       ui.classList.add('hidden');
       state.running = false;
-      audio.stopMusic(); audio.stopEngine();
+      audio.stopMusic(); audio.stopEngine(); audio.stopAmbulanceSiren();
     }
 
     els.titleStartBtn.addEventListener('click', startGame);
