@@ -484,15 +484,20 @@
       ctx.restore();
     }
 
+    // ✅ CORRECCIÓN: Función de disparo robusta
     function drawProjectiles() {
       state.projectiles.forEach(p => {
         ctx.save();
-        let gradient = ctx.createLinearGradient(p.x, p.y, p.x, p.y - p.h*3);
+        // Usamos un valor fijo en lugar de p.h (que no existía y causaba el error)
+        const trailLen = 40; 
+        
+        let gradient = ctx.createLinearGradient(p.x, p.y, p.x, p.y - trailLen);
         gradient.addColorStop(0, 'rgba(255,200,50,0.9)');
         gradient.addColorStop(0.5, 'rgba(255,100,0,0.5)');
         gradient.addColorStop(1, 'rgba(255,50,0,0)');
+        
         ctx.fillStyle = gradient;
-        ctx.fillRect(p.x - 2, p.y, 4, p.h*3);
+        ctx.fillRect(p.x - 2, p.y, 4, trailLen);
         ctx.fillStyle = '#ffcc00';
         ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = '#fff';
@@ -566,16 +571,14 @@
       state.snow.forEach(s => { ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
     }
 
-    // ✅ NUEVO MÉTODO DE NOCHE ROBUSTO: DIBUJAR POLÍGONOS DE OSCURIDAD
     function drawNightDarkness() {
       if(!state.nightMode) return;
 
       const cx = state.player.x + state.player.w/2;
-      const cy = state.player.y + 5; // Posición faros
+      const cy = state.player.y + 5;
       const len = 320;
       const width = state.currentRoadW * 0.85;
 
-      // Coordenadas del cono de luz
       const coneTopLeftX = cx - width/2;
       const coneTopLeftY = cy - len;
       const coneTopRightX = cx + width/2;
@@ -586,9 +589,9 @@
       const coneBaseRightX = cx + state.player.w*0.1;
       const coneBaseRightY = cy;
 
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.88)'; // Oscuridad
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
 
-      // Polígono Superior (Techo)
+      // Techo
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(canvas.width, 0);
@@ -596,7 +599,7 @@
       ctx.lineTo(coneTopLeftX, coneTopLeftY);
       ctx.fill();
 
-      // Polígono Izquierdo
+      // Izquierda
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(coneTopLeftX, coneTopLeftY);
@@ -604,7 +607,7 @@
       ctx.lineTo(0, canvas.height);
       ctx.fill();
 
-      // Polígono Derecho
+      // Derecha
       ctx.beginPath();
       ctx.moveTo(canvas.width, 0);
       ctx.lineTo(coneTopRightX, coneTopRightY);
@@ -612,7 +615,7 @@
       ctx.lineTo(canvas.width, canvas.height);
       ctx.fill();
 
-      // Polígono Inferior (Suelo detrás del coche)
+      // Suelo
       ctx.beginPath();
       ctx.moveTo(0, canvas.height);
       ctx.lineTo(coneBaseLeftX, coneBaseLeftY);
@@ -620,7 +623,6 @@
       ctx.lineTo(canvas.width, canvas.height);
       ctx.fill();
       
-      // Brillo suave en los faros
       let grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 30);
       grad.addColorStop(0, 'rgba(255, 255, 200, 0.5)');
       grad.addColorStop(1, 'rgba(255, 255, 200, 0)');
@@ -922,29 +924,38 @@
       warningPanel.style.display = 'none';
     }
 
-    // ✅ ORDEN DE DIBUJO CORREGIDO
+    // ✅ ORDEN DE DIBUJO ROBUSTO
     function draw() {
       try {
-        // 1. Limpiar y dibujar el escenario DIURNO
         ctx.clearRect(0,0,canvas.width,canvas.height); 
+        
+        // 1. Fondo y carretera
         drawEnv();
         drawSnow();
+        
+        // 2. Objetos y Enemigos (Dibujados PRIMERO)
         state.oilSpills.forEach(oil => drawOilSpill(oil));
         state.shieldPickups.forEach(sp => drawShieldPickup(sp));
         state.tripleShotPickups.forEach(sp => drawTripleShotPickup(sp));
-        drawProjectiles();
         state.ambulances.forEach(amb => drawAmbulance(amb));
-        state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c)); // COCHES ENEMIGOS
+        state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c)); // ENEMIGOS
+        
+        // 3. Jugador (Dibujado DESPUÉS de enemigos)
         if(!state.exploding) {
           drawActiveShield();
-          drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color); // JUGADOR
+          drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color);
         }
+        
+        // 4. Partículas
         if(state.particles.length>0) {
           for(let i=state.particles.length-1;i>=0;i--) { let p=state.particles[i]; p.x+=p.vx; p.y+=p.vy; p.life-=0.018; if(p.life<=0) state.particles.splice(i,1); }
           state.particles.forEach(p=>{ ctx.globalAlpha=p.life; ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.s,0,Math.PI*2); ctx.fill(); }); ctx.globalAlpha=1;
         }
+
+        // 5. Disparos (Dibujados AL FINAL para no interferir con enemigos)
+        drawProjectiles();
         
-        // 2. Aplicar oscuridad (Polígonos) ENCIMA de todo
+        // 6. Modo Noche (Capa final)
         drawNightDarkness();
       } catch(e) { console.warn(e); }
     }
