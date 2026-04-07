@@ -163,14 +163,12 @@
     <br>
     <button id="startBtn" class="btn hidden">🏁 ARRANCAR</button>
     
-    <!-- 🛡️ CONTADOR DE ESCUDO -->
     <div id="shieldCounter">
       <div class="shieldIcon">🛡️</div>
       <div class="shieldTime" id="shieldTime">8.0</div>
       <div class="shieldLabel">ESCUDO</div>
     </div>
     
-    <!-- 🚀 CONTADOR DE DISPARO TRIPLE -->
     <div id="tripleShotCounter">
       <div class="tripleIcon">🚀</div>
       <div class="tripleTime" id="tripleTime">15.0</div>
@@ -194,7 +192,6 @@
   <script>
     const lerp = (a, b, t) => a + (b - a) * t;
     
-    // 🔹 AUDIO
     const audio = {
       ctx: null, engine: { osc: null, gain: null, filter: null, active: false },
       music: { playing: false, nextTime: 0, beat: 0, timer: null },
@@ -357,7 +354,6 @@
       }
     };
 
-    // 🔹 UI & ESTADO
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
     const warningPanel = document.getElementById('warningPanel');
     const titleScreen = document.getElementById('titleScreen');
@@ -392,7 +388,9 @@
       lastAmbulanceDist: -1300,
       shieldActive:false, shieldTimer:0, shieldMaxTime:8000,
       lastShieldDist: -400,
+      // 🚀 DISPARO TRIPLE
       tripleShotActive:false, tripleShotTimer:0, tripleShotMaxTime:15000,
+      pendingTripleShotSpawn:false, // 🆕 Indica que hay un spawn pendiente esperando a que termine la noche
       lastTripleShotDist: -1200,
       tripleShotSpawned:false,
       baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0,
@@ -418,7 +416,6 @@
     }
     window.addEventListener('resize', resize); resize();
 
-    // 👆 CONTROLES TÁCTILES
     let drag=false, dOff=0;
     canvas.addEventListener('touchstart', e=>{ 
       e.preventDefault(); if(!state.running) return; 
@@ -432,7 +429,6 @@
     canvas.addEventListener('touchend', ()=>drag=false); 
     canvas.addEventListener('touchcancel', ()=>drag=false);
 
-    // ⌨️ CONTROLES TECLADO
     let keys = { left: false, right: false };
     window.addEventListener('keydown', (e) => {
       if (!state.running) return;
@@ -598,15 +594,26 @@
 
         const d = Math.floor(state.score);
         
+        // 🌙 NOCHE
         if(!state.nightMode && d>=state.lastNightDist+2000) { state.nightMode=true; state.nightStart=Date.now(); state.lastNightDist=d; els.nightBadge.style.display='inline-block'; }
-        if(state.nightMode && Date.now()-state.nightStart>20000) { state.nightMode=false; els.nightBadge.style.display='none'; }
+        if(state.nightMode && Date.now()-state.nightStart>20000) { 
+          state.nightMode=false; 
+          els.nightBadge.style.display='none';
+          // 🚀 Si había un spawn pendiente por la noche, lo ejecutamos ahora
+          if(state.pendingTripleShotSpawn) {
+            spawnTripleShotPickup();
+            state.pendingTripleShotSpawn = false;
+          }
+        }
         
+        // 🧊 HIELO
         if(!state.iceMode && state.nightMode && d > state.lastIceDist + 4000 - 15) {
           state.nightMode = false; els.nightBadge.style.display = 'none';
         }
         if(!state.iceMode && d>=state.lastIceDist+4000) { state.iceMode=true; state.iceStart=Date.now(); state.lastIceDist=d; els.iceBadge.style.display='inline-block'; }
         if(state.iceMode && Date.now()-state.iceStart>15000) { state.iceMode=false; els.iceBadge.style.display='none'; state.snow=[]; }
 
+        // 🚧 ESTRECHAMIENTO
         if(!state.warningNarrow && !state.narrowed && d>=state.lastNarrowDist+3000) {
           state.warningNarrow = true;
           state.warningNarrowEnd = Date.now() + 2000;
@@ -620,7 +627,16 @@
           state.targetRoadW = state.baseRoadW * 0.60;
           els.narrowBadge.style.display = 'inline-block';
           warningPanel.style.display = 'none';
-          if(!state.tripleShotSpawned) { spawnTripleShotPickup(); state.tripleShotSpawned = true; }
+          // 🚀 Spawn de disparo triple al estrecharse (si no es de noche)
+          if(!state.tripleShotSpawned) {
+            if(!state.nightMode) {
+              spawnTripleShotPickup();
+            } else {
+              // Si es de noche, marcamos que hay un spawn pendiente
+              state.pendingTripleShotSpawn = true;
+            }
+            state.tripleShotSpawned = true;
+          }
         }
         if(state.narrowed && Date.now()-state.narrowStart>30000) { 
           state.narrowed=false; 
@@ -633,6 +649,7 @@
         state.currentRoadW = lerp(state.currentRoadW, state.targetRoadW, 0.06);
         state.currentRoadX = (canvas.width - state.currentRoadW)/2;
 
+        // 🛡️ ESCUDO
         if(state.shieldActive) {
           state.shieldTimer -= 16;
           let remaining = Math.max(0, state.shieldTimer / 1000);
@@ -640,6 +657,7 @@
           if(state.shieldTimer <= 0) { state.shieldActive = false; shieldCounter.style.display = 'none'; }
         }
 
+        // 🚀 DISPARO TRIPLE
         if(state.tripleShotActive) {
           state.tripleShotTimer -= 16;
           let remaining = Math.max(0, state.tripleShotTimer / 1000);
@@ -681,6 +699,7 @@
           if(s.y > canvas.height) state.snow.splice(i,1);
         }
 
+        // 🛢️ ACEITE
         let lastOilY = state.oilSpills.length > 0 ? state.oilSpills[state.oilSpills.length-1].y : 300;
         if(lastOilY > 200 && Math.random() < 0.0008 && state.oilSpills.length < 3) {
           let oilW = state.player.w * 1.2;
@@ -689,14 +708,12 @@
           state.oilSpills.push({ x: oilX, y: -100, w: oilW, h: oilH });
         }
 
+        // 🛡️ ESCUDO POWER-UP
         if(d >= state.lastShieldDist + 1200 && state.shieldPickups.length === 0 && !state.shieldActive) {
           spawnShieldPickup();
         }
 
-        if(d >= state.lastTripleShotDist + 2000 && state.tripleShotPickups.length === 0 && !state.tripleShotActive && d > 1000) {
-          spawnTripleShotPickup();
-        }
-
+        // 🚑 AMBULANCIA
         if(d >= state.lastAmbulanceDist + 1800 && state.ambulances.length === 0) {
           let ambW = state.player.w * 1.3;
           let ambH = ambW * 1.8;
@@ -706,6 +723,7 @@
           audio.startAmbulanceSiren();
         }
 
+        // 🚗 TRÁFICO
         let lastY = state.obstacles.length > 0 ? state.obstacles[state.obstacles.length-1].y : 250;
         let spawnRate = 0.038 + (state.score / 18000); 
         if(state.nightMode) spawnRate += 0.025;
@@ -732,6 +750,7 @@
           }
         }
 
+        // Actualizar aceite
         for(let i=state.oilSpills.length-1; i>=0; i--) {
           let oil = state.oilSpills[i];
           oil.y += state.speed;
@@ -743,6 +762,7 @@
           }
         }
 
+        // 🛡️ Power-up escudo
         for(let i=state.shieldPickups.length-1; i>=0; i--) {
           let sp = state.shieldPickups[i];
           sp.y += state.speed * 0.5;
@@ -755,6 +775,7 @@
           }
         }
 
+        // 🚀 Power-up disparo triple (SOLO si no es de noche)
         for(let i=state.tripleShotPickups.length-1; i>=0; i--) {
           let sp = state.tripleShotPickups[i];
           sp.y += state.speed * 0.5;
@@ -768,6 +789,7 @@
           }
         }
 
+        // 🚀 Proyectiles
         for(let i=state.projectiles.length-1; i>=0; i--) {
           let p = state.projectiles[i];
           p.y -= p.speed;
@@ -785,6 +807,7 @@
           }
         }
 
+        // Ambulancias
         for(let i=state.ambulances.length-1; i>=0; i--) {
           let amb = state.ambulances[i];
           amb.y += amb.speed;
@@ -793,6 +816,7 @@
           if(p.x+m<amb.x+amb.w-m && p.x+p.w-m>amb.x+m && p.y+m<amb.y+amb.h-m && p.y+p.h-m>amb.y+m) { triggerCrash(); return; }
         }
 
+        // Obstáculos
         for(let i=state.obstacles.length-1; i>=0; i--) {
           let o=state.obstacles[i]; 
           o.y += o.speed;
@@ -813,6 +837,11 @@
     }
 
     function spawnTripleShotPickup() {
+      // 🚫 NO spawneamos si es de noche
+      if(state.nightMode) {
+        state.pendingTripleShotSpawn = true;
+        return;
+      }
       let spW = state.player.w * 1.0;
       let spH = spW;
       let spX = state.currentRoadX + 20 + Math.random() * (state.currentRoadW - spW - 40);
@@ -866,22 +895,22 @@
       warningPanel.style.display = 'none';
     }
 
-    // ✅ CORRECCIÓN: drawNight() se llama ANTES de dibujar coches y jugador
+    // ✅ ORDEN CORRECTO: drawNight() después del fondo, antes de los coches
     function draw() {
       try {
         ctx.clearRect(0,0,canvas.width,canvas.height); 
         drawEnv();
-        drawNight(); // <--- OSCURIDAD SOBRE EL FONDO
+        drawNight();
         drawSnow();
         state.oilSpills.forEach(oil => drawOilSpill(oil));
         state.shieldPickups.forEach(sp => drawShieldPickup(sp));
         state.tripleShotPickups.forEach(sp => drawTripleShotPickup(sp));
         drawProjectiles();
         state.ambulances.forEach(amb => drawAmbulance(amb));
-        state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c)); // COCHES ENCIMA
+        state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c));
         if(!state.exploding) {
           drawActiveShield();
-          drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color); // JUGADOR ENCIMA
+          drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color);
         }
         if(state.particles.length>0) {
           for(let i=state.particles.length-1;i>=0;i--) { let p=state.particles[i]; p.x+=p.vx; p.y+=p.vy; p.life-=0.018; if(p.life<=0) state.particles.splice(i,1); }
@@ -902,7 +931,7 @@
       state.lastAmbulanceDist = -1300; state.lastShieldDist = -400; state.lastTripleShotDist = -1200;
       state.shieldActive = false; state.shieldTimer = 0;
       state.tripleShotActive = false; state.tripleShotTimer = 0; state.tripleShotCooldown = 0;
-      state.tripleShotSpawned = false;
+      state.pendingTripleShotSpawn = false; state.tripleShotSpawned = false;
       shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none';
       state.nightMode=false; state.lastNightDist=0; els.nightBadge.style.display='none';
       state.narrowed=false; state.lastNarrowDist=0; state.warningNarrow=false; els.narrowBadge.style.display='none';
