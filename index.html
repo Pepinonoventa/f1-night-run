@@ -392,7 +392,7 @@
       tripleShotSpawned:false,
       baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0,
       tripleShotCooldown:0,
-      displayRPM: 0
+      displayRPM: 0 // RPM para la aguja
     };
 
     els.lastScore.textContent = `Últ: ${state.lastScore}m`;
@@ -570,83 +570,97 @@
       state.snow.forEach(s => { ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
     }
 
-    // 📊 VELOCÍMETRO DIGITAL (El primero que te gustó)
+    // 📊 VELOCÍMETRO Y RPM
     function drawDashboard() {
-      // Posición inferior derecha
-      const x = canvas.width - 180;
-      const y = canvas.height - 90;
-      const w = 170;
-      const h = 80;
+      const cx = canvas.width - 70;
+      const cy = canvas.height - 70;
+      const radius = 60;
 
-      // Fondo del panel
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.beginPath();
-      ctx.moveTo(x + 10, y);
-      ctx.lineTo(x + w - 10, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + 10);
-      ctx.lineTo(x + w, y + h - 10);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - 10, y + h);
-      ctx.lineTo(x + 10, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - 10);
-      ctx.lineTo(x, y + 10);
-      ctx.quadraticCurveTo(x, y, x + 10, y);
-      ctx.fill();
-
-      // Borde Neón
-      ctx.strokeStyle = '#00ffff';
-      ctx.lineWidth = 2;
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = '#00ffff';
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // Velocidad Digital
+      // Mapear velocidad a Km/h (Falso, para estética)
       const speedKmh = Math.floor(state.speed * 15);
-      ctx.fillStyle = '#00ffff';
-      ctx.font = 'bold 36px monospace';
-      ctx.textAlign = 'left';
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = '#00ffff';
-      ctx.fillText(speedKmh, x + 15, y + 45);
-      ctx.shadowBlur = 0;
-
-      // Etiqueta KM/H
-      ctx.fillStyle = '#888';
-      ctx.font = '10px monospace';
-      ctx.fillText('KM/H', x + 15, y + 60);
-
-      // Barra de RPM (LED Style)
+      
+      // Mapear velocidad a RPM (0 a 10000)
+      // Max speed visual es aprox 25
       const maxVisualSpeed = 25;
       let rpmRatio = Math.min(state.speed / maxVisualSpeed, 1);
       
-      // Suavizado visual
-      state.displayRPM = lerp(state.displayRPM, rpmRatio, 0.1);
-      
-      const rpmX = x + 15;
-      const rpmY = y + 10;
-      const rpmW = w - 70; // Espacio para la marcha
-      const rpmH = 10;
+      // Suavizado de la aguja
+      state.displayRPM = lerp(state.displayRPM, rpmRatio * 10000, 0.1);
 
-      // Fondo de la barra
-      ctx.fillStyle = '#111';
-      ctx.fillRect(rpmX, rpmY, rpmW, rpmH);
+      ctx.save();
+      ctx.translate(cx, cy);
 
-      // Segmentos de color
-      const fillW = rpmW * state.displayRPM;
-      
-      if(fillW > 0) {
-        let color = '#00ff00';
-        if(state.displayRPM > 0.6) color = '#ffff00';
-        if(state.displayRPM > 0.85) color = '#ff0055';
+      // Fondo del velocímetro
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#00ffff';
+      ctx.stroke();
 
-        ctx.fillStyle = color;
-        ctx.shadowBlur = 5;
-        ctx.shadowColor = color;
-        ctx.fillRect(rpmX, rpmY, fillW, rpmH);
-        ctx.shadowBlur = 0;
+      // Zona roja (Redline)
+      ctx.beginPath();
+      ctx.arc(0, 0, radius - 5, Math.PI * 0.75, Math.PI * 1.25); // Zona superior
+      ctx.strokeStyle = '#ff0055';
+      ctx.lineWidth = 4;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ff0055';
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Marcas del tacómetro (Tics)
+      for(let i = 0; i <= 10; i++) {
+        const angle = Math.PI + (i / 10) * Math.PI; // 180 a 360 grados
+        const innerR = i % 2 === 0 ? radius - 15 : radius - 10;
+        const outerR = radius - 5;
+        
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * innerR, Math.sin(angle) * innerR);
+        ctx.lineTo(Math.cos(angle) * outerR, Math.sin(angle) * outerR);
+        ctx.strokeStyle = i > 8 ? '#ff0055' : '#00ffff'; // Rojo en zona alta
+        ctx.lineWidth = i % 2 === 0 ? 2 : 1;
+        ctx.stroke();
       }
 
-      // Marcha Digital (Gear)
+      // Aguja de RPM
+      // Angulo: Pi (izquierda) a 2Pi (derecha)
+      const needleAngle = Math.PI + (state.displayRPM / 10000) * Math.PI;
+      
+      ctx.save();
+      ctx.rotate(needleAngle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(radius - 10, 0);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#ffcc00';
+      ctx.shadowBlur = 5;
+      ctx.shadowColor = '#ffcc00';
+      ctx.stroke();
+      ctx.restore();
+
+      // Centro
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffcc00';
+      ctx.fill();
+
+      // Texto Velocidad Digital
+      ctx.restore(); // Restaurar contexto para texto recto
+
+      ctx.fillStyle = '#00ffff';
+      ctx.font = 'bold 24px Courier New';
+      ctx.textAlign = 'center';
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#00ffff';
+      ctx.fillText(speedKmh, cx, cy - 10);
+      
+      ctx.font = '10px Courier New';
+      ctx.fillStyle = '#aaa';
+      ctx.shadowBlur = 0;
+      ctx.fillText('Km/h', cx, cy + 5);
+
+      // Marcha (Gear)
       let gear = 1;
       if(speedKmh > 50) gear = 2;
       if(speedKmh > 100) gear = 3;
@@ -656,15 +670,10 @@
 
       ctx.fillStyle = '#ff3333';
       ctx.font = 'bold 12px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('GEAR', x + w - 35, y + 20);
-      
+      ctx.fillText('GEAR', cx + 45, cy + 25);
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 28px monospace';
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = '#fff';
-      ctx.fillText(gear, x + w - 35, y + 50);
-      ctx.shadowBlur = 0;
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText(gear, cx + 45, cy + 40);
     }
 
     function drawNightDarkness() {
@@ -1047,7 +1056,7 @@
         
         drawNightDarkness();
         
-        // 📊 DIBUJAR VELOCÍMETRO DIGITAL
+        // 📊 DIBUJAR VELOCÍMETRO
         drawDashboard();
       } catch(e) { console.warn(e); }
     }
