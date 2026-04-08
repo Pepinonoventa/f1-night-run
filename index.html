@@ -75,6 +75,35 @@
     #tripleShotCounter .tripleTime { font-size:18px; font-weight:bold; color:#fff; text-shadow:0 0 8px rgba(255,102,0,0.8); }
     #tripleShotCounter .tripleLabel { font-size:9px; color:#ff9944; text-transform:uppercase; letter-spacing:1px; }
     
+    /* 🖥️ CONTROLES DESKTOP */
+    #desktopControls {
+      position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
+      background:rgba(0,0,0,0.7); border:1px solid #444; border-radius:8px;
+      padding:6px 12px; font-size:11px; color:#aaa; z-index:5;
+      display:none; pointer-events:none;
+    }
+    #desktopControls span { color:#00ffff; margin:0 3px; font-weight:bold; }
+    
+    /* 🖥️ BOTÓN PANTALLA COMPLETA */
+    #fullscreenBtn {
+      position:absolute; top:env(safe-area-inset-top, 28px); right:10px;
+      background:rgba(0,0,0,0.6); border:1px solid #666; border-radius:6px;
+      padding:6px 10px; font-size:12px; color:#fff; cursor:pointer; z-index:15;
+      display:none;
+    }
+    #fullscreenBtn:hover { background:rgba(50,50,50,0.8); border-color:#00ffff; }
+    
+    /* ⏸️ PANEL DE PAUSA */
+    #pausePanel {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(8,8,12,0.95); border:2px solid #00ccff; border-radius:16px;
+      padding:24px 32px; text-align:center; z-index:30; display:none;
+      box-shadow:0 0 40px rgba(0,204,255,0.3);
+    }
+    #pausePanel h2 { color:#00ccff; margin:0 0 16px 0; font-size:28px; }
+    #pausePanel p { color:#aaa; margin:8px 0; font-size:13px; }
+    #pausePanel .btn { margin-top:16px; }
+    
     #titleScreen {
       position:absolute; top:0; left:0; width:100%; height:100%;
       background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2a 100%);
@@ -143,7 +172,7 @@
       <h1 class="titleLogo">F1 NIGHT RUN</h1>
       <p class="titleSubtitle">🏎️ Carrera Nocturna Extrema 🧊</p>
       <button id="titleStartBtn" class="titleBtn">🏁 INICIAR CARRERA</button>
-      <p class="titleInstructions">👆 Arrastra o usa ← → para moverte</p>
+      <p class="titleInstructions">👆 Arrastra o usa ← → / A D para moverte</p>
     </div>
   </div>
 
@@ -161,6 +190,9 @@
     <br>
     <button id="startBtn" class="btn hidden">🏁 ARRANCAR</button>
     
+    <!-- 🖥️ BOTÓN PANTALLA COMPLETA -->
+    <button id="fullscreenBtn">🖥️ Pantalla Completa</button>
+    
     <div id="shieldCounter">
       <div class="shieldIcon">🛡️</div>
       <div class="shieldTime" id="shieldTime">8.0</div>
@@ -173,11 +205,24 @@
       <div class="tripleLabel">DISPARO</div>
     </div>
     
+    <!-- ⏸️ PANEL DE PAUSA -->
+    <div id="pausePanel">
+      <h2>⏸️ PAUSA</h2>
+      <p>Presiona <span style="color:#00ffff">P</span> o <span style="color:#00ffff">ESPACIO</span> para continuar</p>
+      <p style="font-size:11px;color:#666;margin-top:12px">Controles: ← → o A D | Ratón: arrastrar</p>
+      <button id="resumeBtn" class="btn">▶️ CONTINUAR</button>
+    </div>
+    
     <div id="gameOverPanel" class="hidden">
       <h2>GAME OVER</h2>
       <p id="finalScore"><span>DISTANCIA</span>0m</p>
       <button id="restartBtn" class="btn">🔄 REINICIAR</button>
     </div>
+  </div>
+
+  <!-- 🖥️ INDICADOR DE CONTROLES DESKTOP -->
+  <div id="desktopControls">
+    ← → o <span>A</span> <span>D</span> para mover | <span>P</span> para pausar | <span>F</span> pantalla completa
   </div>
 
   <div id="warningPanel">
@@ -189,6 +234,9 @@
 
   <script>
     const lerp = (a, b, t) => a + (b - a) * t;
+    
+    // 🔹 DETECTAR DISPOSITIVO
+    const isDesktop = window.innerWidth >= 768;
     
     const audio = {
       ctx: null, engine: { osc: null, gain: null, filter: null, active: false },
@@ -360,6 +408,9 @@
     const shieldTimeEl = document.getElementById('shieldTime');
     const tripleShotCounter = document.getElementById('tripleShotCounter');
     const tripleTimeEl = document.getElementById('tripleTime');
+    const pausePanel = document.getElementById('pausePanel');
+    const desktopControls = document.getElementById('desktopControls');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
     
     const els = {
       titleStartBtn: document.getElementById('titleStartBtn'),
@@ -367,11 +418,12 @@
       score: document.getElementById('score'), lastScore: document.getElementById('lastScore'), highScore: document.getElementById('highScore'),
       nightBadge: document.getElementById('nightBadge'), narrowBadge: document.getElementById('narrowBadge'), 
       iceBadge: document.getElementById('iceBadge'), oilBadge: document.getElementById('oilBadge'),
-      title: document.getElementById('title'), gameOver: document.getElementById('gameOverPanel'), finalScore: document.getElementById('finalScore')
+      title: document.getElementById('title'), gameOver: document.getElementById('gameOverPanel'), finalScore: document.getElementById('finalScore'),
+      resumeBtn: document.getElementById('resumeBtn')
     };
 
     let state = { 
-      running:false, exploding:false, score:0, 
+      running:false, exploding:false, score:0, paused:false,
       lastScore: parseInt(localStorage.getItem('f1_last')) || 0,
       highScore: parseInt(localStorage.getItem('f1_highscore')) || 0, 
       baseSpeed: 6.5, speed: 6.5, roadOffset: 0,
@@ -392,11 +444,17 @@
       tripleShotSpawned:false,
       baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0,
       tripleShotCooldown:0,
-      displayRPM: 0 // RPM para la aguja
+      displayRPM: 0
     };
 
     els.lastScore.textContent = `Últ: ${state.lastScore}m`;
     els.highScore.textContent = `🏆 ${state.highScore}m`;
+
+    // 🖥️ Mostrar controles desktop si es PC/Mac
+    if (isDesktop) {
+      desktopControls.style.display = 'block';
+      fullscreenBtn.style.display = 'block';
+    }
 
     function resize() {
       canvas.width = window.innerWidth; canvas.height = window.innerHeight;
@@ -414,28 +472,104 @@
     }
     window.addEventListener('resize', resize); resize();
 
+    // 👆 CONTROLES TÁCTILES (Móvil)
     let drag=false, dOff=0;
     canvas.addEventListener('touchstart', e=>{ 
-      e.preventDefault(); if(!state.running) return; 
+      e.preventDefault(); if(!state.running || state.paused) return; 
       dOff=e.touches[0].clientX-state.player.x; drag=true; 
     }, {passive:false});
     canvas.addEventListener('touchmove', e=>{ 
-      e.preventDefault(); if(!state.running||!drag) return; 
+      e.preventDefault(); if(!state.running || !drag || state.paused) return; 
       let x=e.touches[0].clientX-dOff; 
       state.player.targetX = Math.max(state.currentRoadX, Math.min(x, state.currentRoadX+state.currentRoadW-state.player.w)); 
     }, {passive:false});
     canvas.addEventListener('touchend', ()=>drag=false); 
     canvas.addEventListener('touchcancel', ()=>drag=false);
 
+    // 🖱️ CONTROLES RATÓN (Desktop)
+    canvas.addEventListener('mousedown', e=>{
+      if(!state.running || state.paused) return;
+      dOff = e.clientX - state.player.x;
+      drag = true;
+    });
+    canvas.addEventListener('mousemove', e=>{
+      if(!state.running || !drag || state.paused) return;
+      let x = e.clientX - dOff;
+      state.player.targetX = Math.max(state.currentRoadX, Math.min(x, state.currentRoadX+state.currentRoadW-state.player.w));
+    });
+    canvas.addEventListener('mouseup', ()=>drag=false);
+    canvas.addEventListener('mouseleave', ()=>drag=false);
+
+    // ⌨️ CONTROLES TECLADO (Flechas + WASD + Pausa + Fullscreen)
     let keys = { left: false, right: false };
     window.addEventListener('keydown', (e) => {
-      if (!state.running) return;
-      if (e.key === 'ArrowLeft') { keys.left = true; e.preventDefault(); }
-      if (e.key === 'ArrowRight') { keys.right = true; e.preventDefault(); }
+      if (!state.running) {
+        // Permitir iniciar con Enter o Espacio en pantalla de título
+        if ((e.key === 'Enter' || e.key === ' ') && titleScreen.classList.contains('hidden') === false) {
+          e.preventDefault();
+          startGame();
+        }
+        return;
+      }
+      
+      // Pausa con P o Espacio
+      if (e.key === 'p' || e.key === 'P' || e.key === ' ') {
+        e.preventDefault();
+        togglePause();
+        return;
+      }
+      
+      // Pantalla completa con F
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleFullscreen();
+        return;
+      }
+      
+      // Movimiento: Flechas o WASD
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { keys.left = true; e.preventDefault(); }
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { keys.right = true; e.preventDefault(); }
     });
+    
     window.addEventListener('keyup', (e) => {
-      if (e.key === 'ArrowLeft') keys.left = false;
-      if (e.key === 'ArrowRight') keys.right = false;
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+    });
+
+    // ⏸️ Función de pausa
+    function togglePause() {
+      if (!state.running) return;
+      state.paused = !state.paused;
+      
+      if (state.paused) {
+        pausePanel.style.display = 'block';
+        audio.stopMusic();
+      } else {
+        pausePanel.style.display = 'none';
+        if (audio.ctx && audio.ctx.state !== 'running') audio.ctx.resume();
+        audio.startMusic();
+        loop(); // Reiniciar el loop
+      }
+    }
+    
+    els.resumeBtn.addEventListener('click', () => togglePause());
+
+    // 🖥️ Pantalla completa
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log(`Error al activar pantalla completa: ${err.message}`);
+        });
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+    
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+    
+    // Escuchar cambios de pantalla completa para actualizar el botón
+    document.addEventListener('fullscreenchange', () => {
+      fullscreenBtn.textContent = document.fullscreenElement ? '🔲 Salir' : '🖥️ Pantalla Completa';
     });
 
     function drawF1(x,y,w,h,col) {
@@ -576,21 +710,14 @@
       const cy = canvas.height - 70;
       const radius = 60;
 
-      // Mapear velocidad a Km/h (Falso, para estética)
       const speedKmh = Math.floor(state.speed * 15);
-      
-      // Mapear velocidad a RPM (0 a 10000)
-      // Max speed visual es aprox 25
       const maxVisualSpeed = 25;
       let rpmRatio = Math.min(state.speed / maxVisualSpeed, 1);
-      
-      // Suavizado de la aguja
       state.displayRPM = lerp(state.displayRPM, rpmRatio * 10000, 0.1);
 
       ctx.save();
       ctx.translate(cx, cy);
 
-      // Fondo del velocímetro
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -599,9 +726,8 @@
       ctx.strokeStyle = '#00ffff';
       ctx.stroke();
 
-      // Zona roja (Redline)
       ctx.beginPath();
-      ctx.arc(0, 0, radius - 5, Math.PI * 0.75, Math.PI * 1.25); // Zona superior
+      ctx.arc(0, 0, radius - 5, Math.PI * 0.75, Math.PI * 1.25);
       ctx.strokeStyle = '#ff0055';
       ctx.lineWidth = 4;
       ctx.shadowBlur = 10;
@@ -609,22 +735,19 @@
       ctx.stroke();
       ctx.shadowBlur = 0;
 
-      // Marcas del tacómetro (Tics)
       for(let i = 0; i <= 10; i++) {
-        const angle = Math.PI + (i / 10) * Math.PI; // 180 a 360 grados
+        const angle = Math.PI + (i / 10) * Math.PI;
         const innerR = i % 2 === 0 ? radius - 15 : radius - 10;
         const outerR = radius - 5;
         
         ctx.beginPath();
         ctx.moveTo(Math.cos(angle) * innerR, Math.sin(angle) * innerR);
         ctx.lineTo(Math.cos(angle) * outerR, Math.sin(angle) * outerR);
-        ctx.strokeStyle = i > 8 ? '#ff0055' : '#00ffff'; // Rojo en zona alta
+        ctx.strokeStyle = i > 8 ? '#ff0055' : '#00ffff';
         ctx.lineWidth = i % 2 === 0 ? 2 : 1;
         ctx.stroke();
       }
 
-      // Aguja de RPM
-      // Angulo: Pi (izquierda) a 2Pi (derecha)
       const needleAngle = Math.PI + (state.displayRPM / 10000) * Math.PI;
       
       ctx.save();
@@ -632,21 +755,19 @@
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(radius - 10, 0);
-      ctx.lineWidth = 3;
       ctx.strokeStyle = '#ffcc00';
+      ctx.lineWidth = 3;
       ctx.shadowBlur = 5;
       ctx.shadowColor = '#ffcc00';
       ctx.stroke();
       ctx.restore();
 
-      // Centro
       ctx.beginPath();
       ctx.arc(0, 0, 5, 0, Math.PI * 2);
       ctx.fillStyle = '#ffcc00';
       ctx.fill();
 
-      // Texto Velocidad Digital
-      ctx.restore(); // Restaurar contexto para texto recto
+      ctx.restore();
 
       ctx.fillStyle = '#00ffff';
       ctx.font = 'bold 24px Courier New';
@@ -660,7 +781,6 @@
       ctx.shadowBlur = 0;
       ctx.fillText('Km/h', cx, cy + 5);
 
-      // Marcha (Gear)
       let gear = 1;
       if(speedKmh > 50) gear = 2;
       if(speedKmh > 100) gear = 3;
@@ -696,7 +816,6 @@
 
       ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
 
-      // Techo
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(canvas.width, 0);
@@ -704,7 +823,6 @@
       ctx.lineTo(coneTopLeftX, coneTopLeftY);
       ctx.fill();
 
-      // Izquierda
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(coneTopLeftX, coneTopLeftY);
@@ -712,7 +830,6 @@
       ctx.lineTo(0, canvas.height);
       ctx.fill();
 
-      // Derecha
       ctx.beginPath();
       ctx.moveTo(canvas.width, 0);
       ctx.lineTo(coneTopRightX, coneTopRightY);
@@ -720,7 +837,6 @@
       ctx.lineTo(canvas.width, canvas.height);
       ctx.fill();
 
-      // Suelo
       ctx.beginPath();
       ctx.moveTo(0, canvas.height);
       ctx.lineTo(coneBaseLeftX, coneBaseLeftY);
@@ -741,6 +857,9 @@
 
     function update() {
       try {
+        // Si está en pausa, no actualizar lógica del juego
+        if (state.paused) return;
+        
         state.speed = state.baseSpeed + (state.score / 1200); 
         state.roadOffset += state.speed; 
         audio.updateEngine(state.speed);
@@ -824,6 +943,7 @@
           if(state.oilTimer <= 0) { state.onOil = false; state.oilVibration = 0; els.oilBadge.style.display = 'none'; }
         }
 
+        // ⌨️ Entrada de teclado
         if (keys.left) state.player.targetX -= 8;
         if (keys.right) state.player.targetX += 8;
         state.player.targetX = Math.max(state.currentRoadX, Math.min(state.player.targetX, state.currentRoadX + state.currentRoadW - state.player.w));
@@ -1061,7 +1181,13 @@
       } catch(e) { console.warn(e); }
     }
 
-    function loop() { update(); draw(); if(state.running || state.exploding) requestAnimationFrame(loop); }
+    function loop() { 
+      if (!state.paused) {
+        update(); 
+        draw(); 
+      }
+      if(state.running || state.exploding) requestAnimationFrame(loop); 
+    }
     
     function startGame() {
       titleScreen.classList.add('hidden');
@@ -1069,13 +1195,14 @@
       audio.init(); audio.startEngine(); audio.startMusic();
       state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.snow=[]; 
       state.oilSpills=[]; state.ambulances=[]; state.shieldPickups=[]; state.tripleShotPickups=[]; state.projectiles=[];
-      state.running=true; state.exploding=false; state.onOil=false; state.oilVibration=0; state.oilTimer=0;
+      state.running=true; state.exploding=false; state.paused=false; state.onOil=false; state.oilVibration=0; state.oilTimer=0;
       state.lastAmbulanceDist = -1300; state.lastShieldDist = -400; state.lastTripleShotDist = -1200;
       state.shieldActive = false; state.shieldTimer = 0;
       state.tripleShotActive = false; state.tripleShotTimer = 0; state.tripleShotCooldown = 0;
       state.pendingTripleShotSpawn = false; state.tripleShotSpawned = false;
       state.displayRPM = 0;
       shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none';
+      pausePanel.style.display = 'none';
       state.nightMode=false; state.lastNightDist=0; els.nightBadge.style.display='none';
       state.narrowed=false; state.lastNarrowDist=0; state.warningNarrow=false; els.narrowBadge.style.display='none';
       state.iceMode=false; state.lastIceDist=0; els.iceBadge.style.display='none'; els.oilBadge.style.display='none';
@@ -1093,6 +1220,8 @@
       titleScreen.classList.remove('hidden');
       ui.classList.add('hidden');
       state.running = false;
+      state.paused = false;
+      pausePanel.style.display = 'none';
       audio.stopMusic(); audio.stopEngine(); audio.stopAmbulanceSiren();
       shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none';
     }
