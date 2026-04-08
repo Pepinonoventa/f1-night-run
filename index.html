@@ -59,7 +59,6 @@
     #shieldCounter .shieldTime { font-size:18px; font-weight:bold; color:#fff; text-shadow:0 0 8px rgba(0,204,255,0.8); }
     #shieldCounter .shieldLabel { font-size:9px; color:#66ccff; text-transform:uppercase; letter-spacing:1px; }
     
-    /* 🚀 CONTADOR DE DISPARO TRIPLE - MOVIDO A LA IZQUIERDA */
     #tripleShotCounter {
       position:absolute; top:env(safe-area-inset-top, 165px); left:10px;
       background:rgba(200,50,0,0.8); border:2px solid #ff6600; border-radius:10px;
@@ -392,7 +391,8 @@
       lastTripleShotDist: -1200,
       tripleShotSpawned:false,
       baseRoadW:0, targetRoadW:0, currentRoadW:0, currentRoadX:0,
-      tripleShotCooldown:0
+      tripleShotCooldown:0,
+      displayRPM: 0 // RPM para la aguja
     };
 
     els.lastScore.textContent = `Últ: ${state.lastScore}m`;
@@ -568,6 +568,112 @@
       if(!state.iceMode) return;
       ctx.fillStyle='rgba(255,255,255,0.8)';
       state.snow.forEach(s => { ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
+    }
+
+    // 📊 VELOCÍMETRO Y RPM
+    function drawDashboard() {
+      const cx = canvas.width - 70;
+      const cy = canvas.height - 70;
+      const radius = 60;
+
+      // Mapear velocidad a Km/h (Falso, para estética)
+      const speedKmh = Math.floor(state.speed * 15);
+      
+      // Mapear velocidad a RPM (0 a 10000)
+      // Max speed visual es aprox 25
+      const maxVisualSpeed = 25;
+      let rpmRatio = Math.min(state.speed / maxVisualSpeed, 1);
+      
+      // Suavizado de la aguja
+      state.displayRPM = lerp(state.displayRPM, rpmRatio * 10000, 0.1);
+
+      ctx.save();
+      ctx.translate(cx, cy);
+
+      // Fondo del velocímetro
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#00ffff';
+      ctx.stroke();
+
+      // Zona roja (Redline)
+      ctx.beginPath();
+      ctx.arc(0, 0, radius - 5, Math.PI * 0.75, Math.PI * 1.25); // Zona superior
+      ctx.strokeStyle = '#ff0055';
+      ctx.lineWidth = 4;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ff0055';
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Marcas del tacómetro (Tics)
+      for(let i = 0; i <= 10; i++) {
+        const angle = Math.PI + (i / 10) * Math.PI; // 180 a 360 grados
+        const innerR = i % 2 === 0 ? radius - 15 : radius - 10;
+        const outerR = radius - 5;
+        
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * innerR, Math.sin(angle) * innerR);
+        ctx.lineTo(Math.cos(angle) * outerR, Math.sin(angle) * outerR);
+        ctx.strokeStyle = i > 8 ? '#ff0055' : '#00ffff'; // Rojo en zona alta
+        ctx.lineWidth = i % 2 === 0 ? 2 : 1;
+        ctx.stroke();
+      }
+
+      // Aguja de RPM
+      // Angulo: Pi (izquierda) a 2Pi (derecha)
+      const needleAngle = Math.PI + (state.displayRPM / 10000) * Math.PI;
+      
+      ctx.save();
+      ctx.rotate(needleAngle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(radius - 10, 0);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#ffcc00';
+      ctx.shadowBlur = 5;
+      ctx.shadowColor = '#ffcc00';
+      ctx.stroke();
+      ctx.restore();
+
+      // Centro
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffcc00';
+      ctx.fill();
+
+      // Texto Velocidad Digital
+      ctx.restore(); // Restaurar contexto para texto recto
+
+      ctx.fillStyle = '#00ffff';
+      ctx.font = 'bold 24px Courier New';
+      ctx.textAlign = 'center';
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#00ffff';
+      ctx.fillText(speedKmh, cx, cy - 10);
+      
+      ctx.font = '10px Courier New';
+      ctx.fillStyle = '#aaa';
+      ctx.shadowBlur = 0;
+      ctx.fillText('Km/h', cx, cy + 5);
+
+      // Marcha (Gear)
+      let gear = 1;
+      if(speedKmh > 50) gear = 2;
+      if(speedKmh > 100) gear = 3;
+      if(speedKmh > 150) gear = 4;
+      if(speedKmh > 200) gear = 5;
+      if(speedKmh > 250) gear = 6;
+
+      ctx.fillStyle = '#ff3333';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText('GEAR', cx + 45, cy + 25);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText(gear, cx + 45, cy + 40);
     }
 
     function drawNightDarkness() {
@@ -949,6 +1055,9 @@
         drawProjectiles();
         
         drawNightDarkness();
+        
+        // 📊 DIBUJAR VELOCÍMETRO
+        drawDashboard();
       } catch(e) { console.warn(e); }
     }
 
@@ -965,6 +1074,7 @@
       state.shieldActive = false; state.shieldTimer = 0;
       state.tripleShotActive = false; state.tripleShotTimer = 0; state.tripleShotCooldown = 0;
       state.pendingTripleShotSpawn = false; state.tripleShotSpawned = false;
+      state.displayRPM = 0;
       shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none';
       state.nightMode=false; state.lastNightDist=0; els.nightBadge.style.display='none';
       state.narrowed=false; state.lastNarrowDist=0; state.warningNarrow=false; els.narrowBadge.style.display='none';
