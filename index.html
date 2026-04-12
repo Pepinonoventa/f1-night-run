@@ -576,8 +576,8 @@
         let drawW, drawH, drawX, drawY;
         if (imgRatio > targetRatio) { drawW = w; drawH = w / imgRatio; drawX = x; drawY = y + (h - drawH) / 2; }
         else { drawH = h; drawW = h * imgRatio; drawX = x + (w - drawW) / 2; drawY = y; }
-        ctx.shadowBlur = 4; ctx.shadowColor = isEnemy ? '#ff6600' : col;
-        ctx.drawImage(img, drawX, drawY, drawW, drawH); ctx.shadowBlur = 0;
+        // ✅ AURA ELIMINADA (sin shadowBlur/shadowColor)
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
       } else {
         ctx.fillStyle = col; ctx.beginPath();
         ctx.moveTo(x+w*0.4,y); ctx.lineTo(x+w*0.6,y); ctx.lineTo(x+w*0.7,y+h*0.25); ctx.lineTo(x+w,y+h*0.35); ctx.lineTo(x+w,y+h*0.75);
@@ -598,6 +598,7 @@
         if (imgRatio > targetRatio) { drawW = amb.w; drawH = amb.w / imgRatio; drawX = amb.x; drawY = amb.y + (amb.h - drawH) / 2; }
         else { drawH = amb.h; drawW = amb.h * imgRatio; drawX = amb.x + (amb.w - drawW) / 2; drawY = amb.y; }
         let flash = Math.floor(Date.now()/100) % 2 === 0;
+        // ✅ AURA DE AMBULANCIA MANTENIDA (luces parpadeantes)
         ctx.shadowBlur = 8; ctx.shadowColor = flash ? '#ff0000' : '#0000ff';
         ctx.drawImage(ambulanceImg, drawX, drawY, drawW, drawH); ctx.shadowBlur = 0;
       } else {
@@ -788,7 +789,6 @@
               const availableTypes = []; enemyImagesLoaded.forEach((loaded, index) => { if (loaded) availableTypes.push(index); });
               let enemyType = -1; if (availableTypes.length > 0) { enemyType = availableTypes[Math.floor(Math.random() * availableTypes.length)]; }
               
-              // ✅ TODOS LOS COCHES RIVALES DEL MISMO TAMAÑO QUE EL JUGADOR
               state.obstacles.push({ 
                 x:px, y:-state.player.h-50-(c*60), 
                 w:state.player.w, h:state.player.h, 
