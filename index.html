@@ -453,7 +453,7 @@
       lastScore: parseInt(localStorage.getItem('f1_last')) || 0,
       highScore: parseInt(localStorage.getItem('f1_highscore')) || 0, 
       baseSpeed: 6.5, speed: 6.5, roadOffset: 0,
-      player:{x:0,y:0,w:0,h:0,vx:0,targetX:0,color:'#ff0000'}, 
+      player:{x:0,y:0,w:0,h:0,targetX:0,color:'#ff0000'}, // ✅ ELIMINADO: vx ya no es necesario
       obstacles:[], particles:[], snow:[], oilSpills:[], ambulances:[], shieldPickups:[],
       projectiles:[], tripleShotPickups:[],
       nightMode:false, nightStart:0, lastNightDist:0,
@@ -493,7 +493,6 @@
       if(!state.running) {
         state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2;
         state.player.targetX = state.player.x;
-        state.player.vx = 0;
       }
     }
     window.addEventListener('resize', resize); resize();
@@ -577,8 +576,6 @@
 
     function drawF1(x, y, w, h, col, isEnemy = false, enemyType = -1) {
       ctx.save();
-      // ✅ SOMBRAS ELIMINADAS: Ya no se dibuja el óvalo negro debajo del coche
-      
       let img, imgLoaded;
       if (isEnemy) {
         if (enemyType >= 0 && enemyType < enemyImages.length && enemyImagesLoaded[enemyType]) { img = enemyImages[enemyType]; imgLoaded = true; }
@@ -603,8 +600,6 @@
 
     function drawAmbulance(amb) {
       ctx.save();
-      // ✅ SOMBRAS ELIMINADAS: Ya no se dibuja el óvalo negro debajo de la ambulancia
-      
       if (ambulanceImgLoaded && ambulanceImg.complete) {
         const imgRatio = ambulanceImg.width / ambulanceImg.height; const targetRatio = amb.w / amb.h;
         let drawW, drawH, drawX, drawY;
@@ -701,11 +696,7 @@
     }
 
     function drawDashboard() {
-      // ✅ VELOCÍMETRO MÁS PEQUEÑO (Radio reducido de 60 a 35)
-      const cx = canvas.width - 55; 
-      const cy = canvas.height - 55; 
-      const radius = 35;
-      
+      const cx = canvas.width - 55; const cy = canvas.height - 55; const radius = 35;
       const speedKmh = Math.floor(state.speed * 15); const maxVisualSpeed = 25;
       let rpmRatio = Math.min(state.speed / maxVisualSpeed, 1); state.displayRPM = lerp(state.displayRPM, rpmRatio * 10000, 0.1);
       ctx.save(); ctx.translate(cx, cy);
@@ -766,13 +757,19 @@
         if(state.shieldActive) { state.shieldTimer -= 16; let remaining = Math.max(0, state.shieldTimer / 1000); shieldTimeEl.textContent = remaining.toFixed(1); if(state.shieldTimer <= 0) { state.shieldActive = false; shieldCounter.style.display = 'none'; } }
         if(state.tripleShotActive) { state.tripleShotTimer -= 16; let remaining = Math.max(0, state.tripleShotTimer / 1000); tripleTimeEl.textContent = remaining.toFixed(1); state.tripleShotCooldown -= 16; if(state.tripleShotCooldown <= 0) { fireTripleShot(); state.tripleShotCooldown = 500; } if(state.tripleShotTimer <= 0) { state.tripleShotActive = false; tripleShotCounter.style.display = 'none'; } }
 
-        let isIce = state.iceMode; let accel = isIce ? 0.035 : 0.18; let friction = isIce ? 0.93 : 0.72;
-        if(state.onOil) { state.oilTimer--; state.oilVibration = Math.sin(Date.now()/30) * 3; friction = 0.98; accel = 0.08; if(Math.random() < 0.3) state.player.vx += (Math.random()-0.5) * 2; if(state.oilTimer <= 0) { state.onOil = false; state.oilVibration = 0; els.oilBadge.style.display = 'none'; } }
-        if (keys.left) state.player.targetX -= 8; if (keys.right) state.player.targetX += 8;
+        let isIce = state.iceMode; let friction = isIce ? 0.95 : 0.85; // ✅ AJUSTADO: Reducido impacto en hielo para mayor control
+        if(state.onOil) { state.oilTimer--; state.oilVibration = Math.sin(Date.now()/30) * 3; friction = 0.9; if(state.oilTimer <= 0) { state.onOil = false; state.oilVibration = 0; els.oilBadge.style.display = 'none'; } }
+        
+        if (keys.left) state.player.targetX -= 10; // ✅ TECLADO: Aumentada velocidad de respuesta
+        if (keys.right) state.player.targetX += 10;
+        
+        // Mantener targetX dentro de la carretera
         state.player.targetX = Math.max(state.currentRoadX, Math.min(state.player.targetX, state.currentRoadX + state.currentRoadW - state.player.w));
-        let dx = state.player.targetX - state.player.x; state.player.vx += dx * accel; state.player.x += state.player.vx + state.oilVibration; state.player.vx *= friction;
-        if(state.player.x < state.currentRoadX) { state.player.x = state.currentRoadX; state.player.vx *= -0.4; state.player.targetX = state.currentRoadX; }
-        if(state.player.x > state.currentRoadX + state.currentRoadW - state.player.w) { state.player.x = state.currentRoadX + state.currentRoadW - state.player.w; state.player.vx *= -0.4; state.player.targetX = state.currentRoadX + state.currentRoadW - state.player.w; }
+
+        // ✅ MOVIMIENTO FLUIDO (LERP)
+        // Reemplazamos la física de muelle por una interpolación lineal suave
+        // El factor 0.18 da un balance perfecto entre suavidad y respuesta inmediata
+        state.player.x = lerp(state.player.x, state.player.targetX, 0.18);
 
         if(state.iceMode && Math.random() < 0.4 && state.snow.length < 60) { state.snow.push({ x: Math.random()*canvas.width, y: -5, speed: 2+Math.random()*3, size: 1+Math.random()*2, drift: (Math.random()-0.5)*1 }); }
         for(let i=state.snow.length-1; i>=0; i--) { let s = state.snow[i]; s.y += s.speed; s.x += s.drift + Math.sin(Date.now()/200)*0.5; if(s.y > canvas.height) state.snow.splice(i,1); }
@@ -923,7 +920,7 @@
       state.iceMode=false; state.lastIceDist=0; els.iceBadge.style.display='none'; els.oilBadge.style.display='none';
       state.targetRoadW=state.baseRoadW; state.currentRoadW=state.baseRoadW; els.score.textContent='0 m';
       els.gameOver.classList.add('hidden'); warningPanel.style.display = 'none';
-      resize(); state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2; state.player.targetX = state.player.x; state.player.vx = 0; loop();
+      resize(); state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2; state.player.targetX = state.player.x; loop();
     }
     function showTitleScreen() { titleScreen.classList.remove('hidden'); ui.classList.add('hidden'); state.running = false; state.paused = false; pausePanel.style.display = 'none'; audio.stopMusic(); audio.stopEngine(); audio.stopAmbulanceSiren(); bgMusic.pause(); bgMusic.currentTime = 0; shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none'; }
 
