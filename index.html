@@ -192,7 +192,7 @@
     
     <div id="shieldCounter">
       <div class="shieldIcon">🛡️</div>
-      <div class="shieldTime" id="shieldTime">8.0</div>
+      <div class="shieldTime" id="shieldTime">∞</div>
       <div class="shieldLabel">ESCUDO</div>
     </div>
     
@@ -462,7 +462,7 @@
       iceMode:false, iceStart:0, lastIceDist:0,
       onOil:false, oilVibration:0, oilTimer:0,
       lastAmbulanceDist: -1300,
-      shieldActive:false, shieldTimer:0, shieldMaxTime:8000,
+      shieldActive:false,
       lastShieldDist: -400,
       tripleShotActive:false, tripleShotTimer:0, tripleShotMaxTime:15000,
       pendingTripleShotSpawn:false,
@@ -754,30 +754,26 @@
         state.currentRoadW = lerp(state.currentRoadW, state.targetRoadW, 0.06);
         state.currentRoadX = (canvas.width - state.currentRoadW)/2;
 
-        if(state.shieldActive) { state.shieldTimer -= 16; let remaining = Math.max(0, state.shieldTimer / 1000); shieldTimeEl.textContent = remaining.toFixed(1); if(state.shieldTimer <= 0) { state.shieldActive = false; shieldCounter.style.display = 'none'; } }
+        // ✅ ESCUDO PERMANENTE: Solo se muestra, ya no tiene temporizador
+        if(state.shieldActive) {
+          shieldTimeEl.textContent = '∞'; 
+        }
+
         if(state.tripleShotActive) { state.tripleShotTimer -= 16; let remaining = Math.max(0, state.tripleShotTimer / 1000); tripleTimeEl.textContent = remaining.toFixed(1); state.tripleShotCooldown -= 16; if(state.tripleShotCooldown <= 0) { fireTripleShot(); state.tripleShotCooldown = 500; } if(state.tripleShotTimer <= 0) { state.tripleShotActive = false; tripleShotCounter.style.display = 'none'; } }
 
         let isIce = state.iceMode; 
-        // ✅ DERRAPE DE ACEITE: Lógica restaurada
         if(state.onOil) { 
             state.oilTimer--; 
-            state.oilVibration = Math.sin(Date.now()/20) * 4; // Vibración más intensa
+            state.oilVibration = Math.sin(Date.now()/20) * 4; 
             if(state.oilTimer <= 0) { state.onOil = false; state.oilVibration = 0; els.oilBadge.style.display = 'none'; } 
         }
         
         if (keys.left) state.player.targetX -= 10;
         if (keys.right) state.player.targetX += 10;
         
-        // Mantener targetX dentro de la carretera
         state.player.targetX = Math.max(state.currentRoadX, Math.min(state.player.targetX, state.currentRoadX + state.currentRoadW - state.player.w));
-
-        // ✅ MOVIMIENTO FLUIDO (LERP)
         state.player.x = lerp(state.player.x, state.player.targetX, 0.18);
-        
-        // ✅ APLICAR VIBRACIÓN DEL ACEITE A LA POSICIÓN
-        if(state.onOil) {
-            state.player.x += state.oilVibration;
-        }
+        if(state.onOil) { state.player.x += state.oilVibration; }
 
         if(state.iceMode && Math.random() < 0.4 && state.snow.length < 60) { state.snow.push({ x: Math.random()*canvas.width, y: -5, speed: 2+Math.random()*3, size: 1+Math.random()*2, drift: (Math.random()-0.5)*1 }); }
         for(let i=state.snow.length-1; i>=0; i--) { let s = state.snow[i]; s.y += s.speed; s.x += s.drift + Math.sin(Date.now()/200)*0.5; if(s.y > canvas.height) state.snow.splice(i,1); }
@@ -831,7 +827,10 @@
         for(let i=state.shieldPickups.length-1; i>=0; i--) {
           let sp = state.shieldPickups[i]; sp.y += state.speed * 0.5; if(sp.y > canvas.height + 50) { state.shieldPickups.splice(i, 1); continue; }
           if(state.player.x < sp.x + sp.w && state.player.x + state.player.w > sp.x && state.player.y < sp.y + sp.h && state.player.y + state.player.h > sp.y) {
-            state.shieldActive = true; state.shieldTimer = state.shieldMaxTime; shieldCounter.style.display = 'block'; shieldTimeEl.textContent = '8.0'; audio.playShieldPowerUp(); state.shieldPickups.splice(i, 1);
+            state.shieldActive = true; 
+            shieldCounter.style.display = 'block'; 
+            shieldTimeEl.textContent = '∞'; // ✅ Muestra infinito al activarse
+            audio.playShieldPowerUp(); state.shieldPickups.splice(i, 1);
           }
         }
 
@@ -861,7 +860,12 @@
           let o=state.obstacles[i]; o.y += o.speed; if (o.y > canvas.height + 100 || o.y < -200) { state.obstacles.splice(i, 1); continue; }
           let p=state.player, m=4;
           if(p.x+m<o.x+o.w-m && p.x+p.w-m>o.x+m && p.y+m<o.y+o.h-m && p.y+p.h-m>o.y+m) {
-            if(state.shieldActive) { state.shieldActive = false; state.shieldTimer = 0; shieldCounter.style.display = 'none'; audio.playShieldBreak(); createExplosion(p.x+p.w/2, p.y+p.h/2); state.obstacles.splice(i, 1); if(navigator.vibrate) navigator.vibrate(50); continue; }
+            if(state.shieldActive) { 
+              state.shieldActive = false; 
+              shieldCounter.style.display = 'none'; // ✅ Se oculta al romperse
+              audio.playShieldBreak(); createExplosion(p.x+p.w/2, p.y+p.h/2);
+              state.obstacles.splice(i, 1); if(navigator.vibrate) navigator.vibrate(50); continue; 
+            }
             triggerCrash(); return;
           }
           if(state.running && !o.passed && o.y>p.y+p.h) { o.passed=true; state.score+=15; audio.playPass(); }
@@ -920,7 +924,8 @@
       state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.snow=[]; state.oilSpills=[]; state.ambulances=[]; state.shieldPickups=[]; state.tripleShotPickups=[]; state.projectiles=[];
       state.running=true; state.exploding=false; state.paused=false; state.onOil=false; state.oilVibration=0; state.oilTimer=0;
       state.lastAmbulanceDist = -1300; state.lastShieldDist = -400; state.lastTripleShotDist = -1200;
-      state.shieldActive = false; state.shieldTimer = 0; state.tripleShotActive = false; state.tripleShotTimer = 0; state.tripleShotCooldown = 0;
+      state.shieldActive = false; 
+      state.tripleShotActive = false; state.tripleShotTimer = 0; state.tripleShotCooldown = 0;
       state.pendingTripleShotSpawn = false; state.tripleShotSpawned = false; state.displayRPM = 0;
       shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none'; pausePanel.style.display = 'none';
       state.nightMode=false; state.lastNightDist=0; els.nightBadge.style.display='none';
