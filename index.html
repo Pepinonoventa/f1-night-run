@@ -226,11 +226,17 @@
     <p>¡CARRETERA ESTRECHA!</p>
   </div>
 
+  <!-- 🎵 ETIQUETA DE AUDIO (Asegúrate de que tu archivo se llama musica.mp3) -->
+  <audio id="bgMusic" src="musica.mp3" loop preload="auto"></audio>
+
   <canvas id="gameCanvas"></canvas>
 
   <script>
     const lerp = (a, b, t) => a + (b - a) * t;
     
+    // 🎵 REFERENCIA A LA MÚSICA
+    const bgMusic = document.getElementById('bgMusic');
+
     const playerImg = new Image();
     playerImg.src = 'jugador1.png';
     let playerImgLoaded = false;
@@ -550,8 +556,18 @@
     function togglePause() {
       if (!state.running) return;
       state.paused = !state.paused;
-      if (state.paused) { pausePanel.style.display = 'block'; audio.stopMusic(); }
-      else { pausePanel.style.display = 'none'; if (audio.ctx && audio.ctx.state !== 'running') audio.ctx.resume(); audio.startMusic(); loop(); }
+      if (state.paused) { 
+          pausePanel.style.display = 'block'; 
+          audio.stopMusic(); 
+          bgMusic.pause(); // Pausar música también
+      }
+      else { 
+          pausePanel.style.display = 'none'; 
+          if (audio.ctx && audio.ctx.state !== 'running') audio.ctx.resume(); 
+          audio.startMusic(); 
+          bgMusic.play(); // Reanudar música también
+          loop(); 
+      }
     }
     els.resumeBtn.addEventListener('click', () => togglePause());
 
@@ -576,7 +592,6 @@
         let drawW, drawH, drawX, drawY;
         if (imgRatio > targetRatio) { drawW = w; drawH = w / imgRatio; drawX = x; drawY = y + (h - drawH) / 2; }
         else { drawH = h; drawW = h * imgRatio; drawX = x + (w - drawW) / 2; drawY = y; }
-        // ✅ AURA ELIMINADA (sin shadowBlur/shadowColor)
         ctx.drawImage(img, drawX, drawY, drawW, drawH);
       } else {
         ctx.fillStyle = col; ctx.beginPath();
@@ -598,7 +613,6 @@
         if (imgRatio > targetRatio) { drawW = amb.w; drawH = amb.w / imgRatio; drawX = amb.x; drawY = amb.y + (amb.h - drawH) / 2; }
         else { drawH = amb.h; drawW = amb.h * imgRatio; drawX = amb.x + (amb.w - drawW) / 2; drawY = amb.y; }
         let flash = Math.floor(Date.now()/100) % 2 === 0;
-        // ✅ AURA DE AMBULANCIA MANTENIDA (luces parpadeantes)
         ctx.shadowBlur = 8; ctx.shadowColor = flash ? '#ff0000' : '#0000ff';
         ctx.drawImage(ambulanceImg, drawX, drawY, drawW, drawH); ctx.shadowBlur = 0;
       } else {
@@ -611,9 +625,11 @@
         let flash = Math.floor(Date.now()/100) % 2 === 0;
         if(flash) { ctx.fillStyle='#ff0000'; ctx.beginPath(); ctx.arc(amb.x + amb.w*0.25, amb.y + amb.h*0.15, amb.w*0.12, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle='#0000ff'; ctx.beginPath(); ctx.arc(amb.x + amb.w*0.75, amb.y + amb.h*0.15, amb.w*0.12, 0, Math.PI*2); ctx.fill(); }
-        ctx.fillStyle='#111'; ctx.fillRect(amb.x + amb.w*0.15, amb.y + amb.h*0.55, amb.w*0.3, amb.h*0.2);
+        ctx.fillStyle='#111';
+        ctx.fillRect(amb.x + amb.w*0.15, amb.y + amb.h*0.55, amb.w*0.3, amb.h*0.2);
         ctx.fillRect(amb.x + amb.w*0.55, amb.y + amb.h*0.55, amb.w*0.3, amb.h*0.2);
-        ctx.fillStyle='#111'; ctx.fillRect(amb.x - 3, amb.y + amb.h*0.2, 6, amb.h*0.25);
+        ctx.fillStyle='#111';
+        ctx.fillRect(amb.x - 3, amb.y + amb.h*0.2, 6, amb.h*0.25);
         ctx.fillRect(amb.x - 3, amb.y + amb.h*0.55, 6, amb.h*0.25);
         ctx.fillRect(amb.x + amb.w - 3, amb.y + amb.h*0.2, 6, amb.h*0.25);
         ctx.fillRect(amb.x + amb.w - 3, amb.y + amb.h*0.55, 6, amb.h*0.25);
@@ -850,8 +866,27 @@
     function spawnTripleShotPickup() { if(state.nightMode) { state.pendingTripleShotSpawn = true; return; } let spW = state.player.w * 1.0; let spH = spW; let spX = state.currentRoadX + 20 + Math.random() * (state.currentRoadW - spW - 40); state.tripleShotPickups.push({ x: spX, y: -50, w: spW, h: spH }); state.lastTripleShotDist = Math.floor(state.score); }
     function fireTripleShot() { if(!state.tripleShotActive) return; const cx = state.player.x + state.player.w/2; const cy = state.player.y; const speed = 12; state.projectiles.push({ x: cx, y: cy, speed: speed }); state.projectiles.push({ x: cx - state.player.w*0.4, y: cy + 5, speed: speed }); state.projectiles.push({ x: cx + state.player.w*0.4, y: cy + 5, speed: speed }); if(audio.ctx) { const t = audio.ctx.currentTime; const o = audio.ctx.createOscillator(); const g = audio.ctx.createGain(); o.type = 'square'; o.connect(g); g.connect(audio.ctx.destination); o.frequency.setValueAtTime(1200, t); o.frequency.exponentialRampToValueAtTime(400, t+0.08); g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.08); o.start(t); o.stop(t+0.08); } }
     function spawnShieldPickup() { let spW = state.player.w * 1.0; let spH = spW; let spX = state.currentRoadX + 20 + Math.random() * (state.currentRoadW - spW - 40); state.shieldPickups.push({ x: spX, y: -50, w: spW, h: spH }); state.lastShieldDist = Math.floor(state.score); }
-    function triggerCrash() { state.running=false; state.exploding=true; audio.stopMusic(); audio.stopAmbulanceSiren(); audio.playCrash(); if(navigator.vibrate) navigator.vibrate([150,50,120]); createExplosion(state.player.x+state.player.w/2, state.player.y+state.player.h/2); warningPanel.style.display = 'none'; setTimeout(gameOver, 1000); }
-    function gameOver() { state.exploding=false; audio.stopEngine(); let d=Math.floor(state.score); state.lastScore = d; localStorage.setItem('f1_last', d); els.lastScore.textContent = `Últ: ${d}m`; if(d > state.highScore) { state.highScore=d; localStorage.setItem('f1_highscore',d); els.highScore.textContent=`🏆 ${d}m`; } els.finalScore.innerHTML = `<span>DISTANCIA</span>${d}m`; els.gameOver.classList.remove('hidden'); warningPanel.style.display = 'none'; }
+    
+    function triggerCrash() { 
+      state.running=false; state.exploding=true; 
+      audio.stopMusic(); audio.stopAmbulanceSiren(); audio.playCrash(); 
+      bgMusic.pause(); // ⏹️ Pausar música al chocar
+      if(navigator.vibrate) navigator.vibrate([150,50,120]); 
+      createExplosion(state.player.x+state.player.w/2, state.player.y+state.player.h/2); 
+      warningPanel.style.display = 'none'; 
+      setTimeout(gameOver, 1000); 
+    }
+
+    function gameOver() { 
+      state.exploding=false; audio.stopEngine(); 
+      let d=Math.floor(state.score); 
+      state.lastScore = d; localStorage.setItem('f1_last', d); 
+      els.lastScore.textContent = `Últ: ${d}m`; 
+      if(d > state.highScore) { state.highScore=d; localStorage.setItem('f1_highscore',d); els.highScore.textContent=`🏆 ${d}m`; } 
+      els.finalScore.innerHTML = `<span>DISTANCIA</span>${d}m`; 
+      els.gameOver.classList.remove('hidden'); 
+      warningPanel.style.display = 'none'; 
+    }
 
     function draw() {
       try {
@@ -872,8 +907,15 @@
     }
 
     function loop() { if (!state.paused) { update(); draw(); } if(state.running || state.exploding) requestAnimationFrame(loop); }
+    
     function startGame() {
-      titleScreen.classList.add('hidden'); ui.classList.remove('hidden'); audio.init(); audio.startEngine(); audio.startMusic();
+      titleScreen.classList.add('hidden'); ui.classList.remove('hidden'); 
+      audio.init(); audio.startEngine(); audio.startMusic();
+      
+      // 🎵 INICIAR MÚSICA
+      bgMusic.currentTime = 0;
+      bgMusic.play().catch(e => console.log("Interacción requerida para audio"));
+
       state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.snow=[]; state.oilSpills=[]; state.ambulances=[]; state.shieldPickups=[]; state.tripleShotPickups=[]; state.projectiles=[];
       state.running=true; state.exploding=false; state.paused=false; state.onOil=false; state.oilVibration=0; state.oilTimer=0;
       state.lastAmbulanceDist = -1300; state.lastShieldDist = -400; state.lastTripleShotDist = -1200;
@@ -887,7 +929,15 @@
       els.gameOver.classList.add('hidden'); warningPanel.style.display = 'none';
       resize(); state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2; state.player.targetX = state.player.x; state.player.vx = 0; loop();
     }
-    function showTitleScreen() { titleScreen.classList.remove('hidden'); ui.classList.add('hidden'); state.running = false; state.paused = false; pausePanel.style.display = 'none'; audio.stopMusic(); audio.stopEngine(); audio.stopAmbulanceSiren(); shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none'; }
+    
+    function showTitleScreen() { 
+      titleScreen.classList.remove('hidden'); ui.classList.add('hidden'); 
+      state.running = false; state.paused = false; pausePanel.style.display = 'none'; 
+      audio.stopMusic(); audio.stopEngine(); audio.stopAmbulanceSiren();
+      bgMusic.pause(); // ⏹️ Parar música al volver al menú
+      bgMusic.currentTime = 0; // ⏮️ Reiniciar canción
+      shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none'; 
+    }
 
     els.titleStartBtn.addEventListener('click', startGame);
     els.restartBtn.addEventListener('click', () => { els.gameOver.classList.add('hidden'); startGame(); });
