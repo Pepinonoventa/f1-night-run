@@ -226,7 +226,6 @@
     <p>¡CARRETERA ESTRECHA!</p>
   </div>
 
-  <!-- 🎵 ETIQUETA DE AUDIO (Asegúrate de que tu archivo se llama musica.mp3) -->
   <audio id="bgMusic" src="musica.mp3" loop preload="auto"></audio>
 
   <canvas id="gameCanvas"></canvas>
@@ -234,7 +233,6 @@
   <script>
     const lerp = (a, b, t) => a + (b - a) * t;
     
-    // 🎵 REFERENCIA A LA MÚSICA
     const bgMusic = document.getElementById('bgMusic');
 
     const playerImg = new Image();
@@ -559,13 +557,12 @@
       if (state.paused) { 
           pausePanel.style.display = 'block'; 
           audio.stopMusic(); 
-          bgMusic.pause(); // Pausar música también
-      }
-      else { 
+          bgMusic.pause(); 
+      } else { 
           pausePanel.style.display = 'none'; 
           if (audio.ctx && audio.ctx.state !== 'running') audio.ctx.resume(); 
           audio.startMusic(); 
-          bgMusic.play(); // Reanudar música también
+          bgMusic.play(); 
           loop(); 
       }
     }
@@ -580,8 +577,8 @@
 
     function drawF1(x, y, w, h, col, isEnemy = false, enemyType = -1) {
       ctx.save();
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.beginPath(); ctx.ellipse(x + w/2, y + h - 5, w * 0.45, h * 0.15, 0, 0, Math.PI * 2); ctx.fill();
+      // ✅ SOMBRAS ELIMINADAS: Ya no se dibuja el óvalo negro debajo del coche
+      
       let img, imgLoaded;
       if (isEnemy) {
         if (enemyType >= 0 && enemyType < enemyImages.length && enemyImagesLoaded[enemyType]) { img = enemyImages[enemyType]; imgLoaded = true; }
@@ -606,7 +603,8 @@
 
     function drawAmbulance(amb) {
       ctx.save();
-      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(amb.x + amb.w/2, amb.y + amb.h - 5, amb.w * 0.45, amb.h * 0.15, 0, 0, Math.PI * 2); ctx.fill();
+      // ✅ SOMBRAS ELIMINADAS: Ya no se dibuja el óvalo negro debajo de la ambulancia
+      
       if (ambulanceImgLoaded && ambulanceImg.complete) {
         const imgRatio = ambulanceImg.width / ambulanceImg.height; const targetRatio = amb.w / amb.h;
         let drawW, drawH, drawX, drawY;
@@ -703,25 +701,29 @@
     }
 
     function drawDashboard() {
-      const cx = canvas.width - 70; const cy = canvas.height - 70; const radius = 60;
+      // ✅ VELOCÍMETRO MÁS PEQUEÑO (Radio reducido de 60 a 35)
+      const cx = canvas.width - 55; 
+      const cy = canvas.height - 55; 
+      const radius = 35;
+      
       const speedKmh = Math.floor(state.speed * 15); const maxVisualSpeed = 25;
       let rpmRatio = Math.min(state.speed / maxVisualSpeed, 1); state.displayRPM = lerp(state.displayRPM, rpmRatio * 10000, 0.1);
       ctx.save(); ctx.translate(cx, cy);
-      ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#00ffff'; ctx.stroke();
-      ctx.beginPath(); ctx.arc(0, 0, radius - 5, Math.PI * 0.75, Math.PI * 1.25); ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 4; ctx.shadowBlur = 10; ctx.shadowColor = '#ff0055'; ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#00ffff'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, radius - 3, Math.PI * 0.75, Math.PI * 1.25); ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 2; ctx.shadowBlur = 5; ctx.shadowColor = '#ff0055'; ctx.stroke(); ctx.shadowBlur = 0;
       for(let i = 0; i <= 10; i++) {
-        const angle = Math.PI + (i / 10) * Math.PI; const innerR = i % 2 === 0 ? radius - 15 : radius - 10; const outerR = radius - 5;
+        const angle = Math.PI + (i / 10) * Math.PI; const innerR = i % 2 === 0 ? radius - 8 : radius - 6; const outerR = radius - 3;
         ctx.beginPath(); ctx.moveTo(Math.cos(angle) * innerR, Math.sin(angle) * innerR); ctx.lineTo(Math.cos(angle) * outerR, Math.sin(angle) * outerR);
-        ctx.strokeStyle = i > 8 ? '#ff0055' : '#00ffff'; ctx.lineWidth = i % 2 === 0 ? 2 : 1; ctx.stroke();
+        ctx.strokeStyle = i > 8 ? '#ff0055' : '#00ffff'; ctx.lineWidth = 1; ctx.stroke();
       }
       const needleAngle = Math.PI + (state.displayRPM / 10000) * Math.PI;
-      ctx.save(); ctx.rotate(needleAngle); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(radius - 10, 0); ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 3; ctx.shadowBlur = 5; ctx.shadowColor = '#ffcc00'; ctx.stroke(); ctx.restore();
-      ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fillStyle = '#ffcc00'; ctx.fill(); ctx.restore();
-      ctx.fillStyle = '#00ffff'; ctx.font = 'bold 24px Courier New'; ctx.textAlign = 'center'; ctx.shadowBlur = 10; ctx.shadowColor = '#00ffff'; ctx.fillText(speedKmh, cx, cy - 10);
-      ctx.font = '10px Courier New'; ctx.fillStyle = '#aaa'; ctx.shadowBlur = 0; ctx.fillText('Km/h', cx, cy + 5);
+      ctx.save(); ctx.rotate(needleAngle); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(radius - 8, 0); ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+      ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fillStyle = '#ffcc00'; ctx.fill(); ctx.restore();
+      ctx.fillStyle = '#00ffff'; ctx.font = 'bold 18px Courier New'; ctx.textAlign = 'center'; ctx.shadowBlur = 5; ctx.shadowColor = '#00ffff'; ctx.fillText(speedKmh, cx, cy - 8);
+      ctx.font = '9px Courier New'; ctx.fillStyle = '#aaa'; ctx.shadowBlur = 0; ctx.fillText('Km/h', cx, cy + 2);
       let gear = 1; if(speedKmh > 50) gear = 2; if(speedKmh > 100) gear = 3; if(speedKmh > 150) gear = 4; if(speedKmh > 200) gear = 5; if(speedKmh > 250) gear = 6;
-      ctx.fillStyle = '#ff3333'; ctx.font = 'bold 12px monospace'; ctx.fillText('GEAR', cx + 45, cy + 25);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 16px monospace'; ctx.fillText(gear, cx + 45, cy + 40);
+      ctx.fillStyle = '#ff3333'; ctx.font = 'bold 10px monospace'; ctx.fillText('GEAR', cx + 35, cy - 5);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.fillText(gear, cx + 35, cy + 10);
     }
 
     function drawNightDarkness() {
@@ -870,7 +872,7 @@
     function triggerCrash() { 
       state.running=false; state.exploding=true; 
       audio.stopMusic(); audio.stopAmbulanceSiren(); audio.playCrash(); 
-      bgMusic.pause(); // ⏹️ Pausar música al chocar
+      bgMusic.pause();
       if(navigator.vibrate) navigator.vibrate([150,50,120]); 
       createExplosion(state.player.x+state.player.w/2, state.player.y+state.player.h/2); 
       warningPanel.style.display = 'none'; 
@@ -907,15 +909,9 @@
     }
 
     function loop() { if (!state.paused) { update(); draw(); } if(state.running || state.exploding) requestAnimationFrame(loop); }
-    
     function startGame() {
-      titleScreen.classList.add('hidden'); ui.classList.remove('hidden'); 
-      audio.init(); audio.startEngine(); audio.startMusic();
-      
-      // 🎵 INICIAR MÚSICA
-      bgMusic.currentTime = 0;
-      bgMusic.play().catch(e => console.log("Interacción requerida para audio"));
-
+      titleScreen.classList.add('hidden'); ui.classList.remove('hidden'); audio.init(); audio.startEngine(); audio.startMusic();
+      bgMusic.currentTime = 0; bgMusic.play().catch(e => console.log("Interacción requerida"));
       state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.snow=[]; state.oilSpills=[]; state.ambulances=[]; state.shieldPickups=[]; state.tripleShotPickups=[]; state.projectiles=[];
       state.running=true; state.exploding=false; state.paused=false; state.onOil=false; state.oilVibration=0; state.oilTimer=0;
       state.lastAmbulanceDist = -1300; state.lastShieldDist = -400; state.lastTripleShotDist = -1200;
@@ -929,15 +925,7 @@
       els.gameOver.classList.add('hidden'); warningPanel.style.display = 'none';
       resize(); state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2; state.player.targetX = state.player.x; state.player.vx = 0; loop();
     }
-    
-    function showTitleScreen() { 
-      titleScreen.classList.remove('hidden'); ui.classList.add('hidden'); 
-      state.running = false; state.paused = false; pausePanel.style.display = 'none'; 
-      audio.stopMusic(); audio.stopEngine(); audio.stopAmbulanceSiren();
-      bgMusic.pause(); // ⏹️ Parar música al volver al menú
-      bgMusic.currentTime = 0; // ⏮️ Reiniciar canción
-      shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none'; 
-    }
+    function showTitleScreen() { titleScreen.classList.remove('hidden'); ui.classList.add('hidden'); state.running = false; state.paused = false; pausePanel.style.display = 'none'; audio.stopMusic(); audio.stopEngine(); audio.stopAmbulanceSiren(); bgMusic.pause(); bgMusic.currentTime = 0; shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none'; }
 
     els.titleStartBtn.addEventListener('click', startGame);
     els.restartBtn.addEventListener('click', () => { els.gameOver.classList.add('hidden'); startGame(); });
