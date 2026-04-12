@@ -140,6 +140,38 @@
     .titleBtn:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(255,51,51,0.8), 0 0 80px rgba(255,102,0,0.6); }
     .titleBtn:active { transform: scale(0.98); }
     .titleInstructions { margin-top: 30px; font-size: 12px; color: rgba(255,255,255,0.7); letter-spacing: 1px; }
+
+    /* 📖 PANTALLA DE INSTRUCCIONES */
+    #instructionsOverlay {
+      position:absolute; top:0; left:0; width:100%; height:100%;
+      background:rgba(0,0,0,0.85); backdrop-filter:blur(4px);
+      z-index:250; display:none; justify-content:center; align-items:center;
+    }
+    #instructionsOverlay.active { display:flex; }
+    .instructions-panel {
+      background:linear-gradient(135deg, #0a0a14, #141428);
+      border:2px solid #00ccff; border-radius:16px;
+      width:90%; max-width:400px; max-height:85vh;
+      padding:20px; text-align:center; position:relative;
+      box-shadow:0 0 30px rgba(0,204,255,0.3);
+    }
+    .instructions-panel h2 { color:#00ccff; margin-bottom:15px; font-size:24px; text-transform:uppercase; }
+    .instructions-list {
+      max-height:55vh; overflow-y:auto; text-align:left; padding-right:5px;
+      scrollbar-width:thin; scrollbar-color:#00ccff #0a0a14;
+    }
+    .instructions-list::-webkit-scrollbar { width:6px; }
+    .instructions-list::-webkit-scrollbar-track { background:#0a0a14; border-radius:3px; }
+    .instructions-list::-webkit-scrollbar-thumb { background:#00ccff; border-radius:3px; }
+    .inst-item {
+      display:flex; align-items:center; gap:12px; margin-bottom:14px;
+      background:rgba(255,255,255,0.05); padding:10px; border-radius:10px;
+      border-left:3px solid #ff3333;
+    }
+    .inst-icon { font-size:28px; flex-shrink:0; width:40px; text-align:center; }
+    .inst-text h3 { color:#fff; font-size:14px; margin-bottom:3px; }
+    .inst-text p { color:#aaa; font-size:12px; line-height:1.4; margin:0; }
+    #closeInstructionsBtn { margin-top:15px; background:linear-gradient(to bottom, #00ccff, #0088cc); }
     
     #gameOverPanel {
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
@@ -170,7 +202,27 @@
       <h1 class="titleLogo">F1 NIGHT RUN</h1>
       <p class="titleSubtitle">🏎️ Carrera Nocturna Extrema 🧊</p>
       <button id="titleStartBtn" class="titleBtn">🏁 INICIAR CARRERA</button>
+      <button id="instructionsBtn" class="titleBtn" style="background:linear-gradient(to bottom, #00ccff, #0088cc); margin-top:15px;">📖 INSTRUCCIONES</button>
       <p class="titleInstructions">👆 Arrastra o usa ← → / A D para moverte</p>
+    </div>
+  </div>
+
+  <!-- 📖 PANEL DE INSTRUCCIONES -->
+  <div id="instructionsOverlay">
+    <div class="instructions-panel">
+      <h2>📖 INSTRUCCIONES</h2>
+      <div class="instructions-list">
+        <div class="inst-item"><div class="inst-icon">🛡️</div><div class="inst-text"><h3>Escudo Infinito</h3><p>Recógelo y te protegerá indefinidamente. Solo se romperá al absorber un impacto contra un obstáculo.</p></div></div>
+        <div class="inst-item"><div class="inst-icon">🚀</div><div class="inst-text"><h3>Disparo Triple</h3><p>Activa un cañón láser que dispara 3 proyectiles automáticamente durante 15 segundos. ¡Destruye obstáculos y gana +50 puntos!</p></div></div>
+        <div class="inst-item"><div class="inst-icon">🛢️</div><div class="inst-text"><h3>Mancha de Aceite</h3><p>Si la pisas, el coche derrapará y vibrará lateralmente. Pierdes control temporalmente. ¡Evítalas!</p></div></div>
+        <div class="inst-item"><div class="inst-icon">🚧</div><div class="inst-text"><h3>Carretera Estrecha</h3><p>La carretera se reduce drásticamente. Suena una sirena 2 segundos antes como advertencia. ¡Ajusta tu posición rápido!</p></div></div>
+        <div class="inst-item"><div class="inst-icon">🧊</div><div class="inst-text"><h3>Modo Hielo</h3><p>La carretera se congela. La fricción baja, los controles son más resbaladizos y cae nieve. ¡Cuidado con los derrapes!</p></div></div>
+        <div class="inst-item"><div class="inst-icon">🌙</div><div class="inst-text"><h3>Modo Noche</h3><p>La visibilidad se reduce. Solo verás lo que iluminan tus faros. Aparece antes del hielo para advertirte.</p></div></div>
+        <div class="inst-item"><div class="inst-icon">🚑</div><div class="inst-text"><h3>Ambulancia Gigante</h3><p>Aparece cada 1800m. Es enorme y bloquea el paso. ¡Esquiva o usa tu escudo/disparo para pasar!</p></div></div>
+        <div class="inst-item"><div class="inst-icon">📊</div><div class="inst-text"><h3>Velocímetro & Marchas</h3><p>Mide tu velocidad en Km/h y muestra la marcha actual. ¡Mantén el RPM alto para máxima potencia!</p></div></div>
+        <div class="inst-item"><div class="inst-icon">🎵</div><div class="inst-text"><h3>Sonido & Música</h3><p>Sonidos de motor, sirenas, impactos y música de fondo. Se activan al iniciar la partida.</p></div></div>
+      </div>
+      <button id="closeInstructionsBtn" class="btn">⬅️ VOLVER AL MENÚ</button>
     </div>
   </div>
 
@@ -437,6 +489,9 @@
     const pausePanel = document.getElementById('pausePanel');
     const desktopControls = document.getElementById('desktopControls');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const instructionsOverlay = document.getElementById('instructionsOverlay');
+    const instructionsBtn = document.getElementById('instructionsBtn');
+    const closeInstructionsBtn = document.getElementById('closeInstructionsBtn');
     
     const els = {
       titleStartBtn: document.getElementById('titleStartBtn'),
@@ -573,6 +628,11 @@
     }
     fullscreenBtn.addEventListener('click', toggleFullscreen);
     document.addEventListener('fullscreenchange', () => { fullscreenBtn.textContent = document.fullscreenElement ? '🔲 Salir' : '🖥️ Pantalla Completa'; });
+
+    // 📖 LÓGICA DE INSTRUCCIONES
+    instructionsBtn.addEventListener('click', () => { instructionsOverlay.classList.add('active'); });
+    closeInstructionsBtn.addEventListener('click', () => { instructionsOverlay.classList.remove('active'); });
+    instructionsOverlay.addEventListener('click', (e) => { if(e.target === instructionsOverlay) instructionsOverlay.classList.remove('active'); });
 
     function drawF1(x, y, w, h, col, isEnemy = false, enemyType = -1) {
       ctx.save();
@@ -754,23 +814,15 @@
         state.currentRoadW = lerp(state.currentRoadW, state.targetRoadW, 0.06);
         state.currentRoadX = (canvas.width - state.currentRoadW)/2;
 
-        // ✅ ESCUDO PERMANENTE: Solo se muestra, ya no tiene temporizador
-        if(state.shieldActive) {
-          shieldTimeEl.textContent = '∞'; 
-        }
+        if(state.shieldActive) { shieldTimeEl.textContent = '∞'; }
 
         if(state.tripleShotActive) { state.tripleShotTimer -= 16; let remaining = Math.max(0, state.tripleShotTimer / 1000); tripleTimeEl.textContent = remaining.toFixed(1); state.tripleShotCooldown -= 16; if(state.tripleShotCooldown <= 0) { fireTripleShot(); state.tripleShotCooldown = 500; } if(state.tripleShotTimer <= 0) { state.tripleShotActive = false; tripleShotCounter.style.display = 'none'; } }
 
         let isIce = state.iceMode; 
-        if(state.onOil) { 
-            state.oilTimer--; 
-            state.oilVibration = Math.sin(Date.now()/20) * 4; 
-            if(state.oilTimer <= 0) { state.onOil = false; state.oilVibration = 0; els.oilBadge.style.display = 'none'; } 
-        }
+        if(state.onOil) { state.oilTimer--; state.oilVibration = Math.sin(Date.now()/20) * 4; if(state.oilTimer <= 0) { state.onOil = false; state.oilVibration = 0; els.oilBadge.style.display = 'none'; } }
         
         if (keys.left) state.player.targetX -= 10;
         if (keys.right) state.player.targetX += 10;
-        
         state.player.targetX = Math.max(state.currentRoadX, Math.min(state.player.targetX, state.currentRoadX + state.currentRoadW - state.player.w));
         state.player.x = lerp(state.player.x, state.player.targetX, 0.18);
         if(state.onOil) { state.player.x += state.oilVibration; }
@@ -827,9 +879,7 @@
         for(let i=state.shieldPickups.length-1; i>=0; i--) {
           let sp = state.shieldPickups[i]; sp.y += state.speed * 0.5; if(sp.y > canvas.height + 50) { state.shieldPickups.splice(i, 1); continue; }
           if(state.player.x < sp.x + sp.w && state.player.x + state.player.w > sp.x && state.player.y < sp.y + sp.h && state.player.y + state.player.h > sp.y) {
-            state.shieldActive = true; 
-            shieldCounter.style.display = 'block'; 
-            shieldTimeEl.textContent = '∞'; // ✅ Muestra infinito al activarse
+            state.shieldActive = true; shieldCounter.style.display = 'block'; shieldTimeEl.textContent = '∞';
             audio.playShieldPowerUp(); state.shieldPickups.splice(i, 1);
           }
         }
@@ -861,8 +911,7 @@
           let p=state.player, m=4;
           if(p.x+m<o.x+o.w-m && p.x+p.w-m>o.x+m && p.y+m<o.y+o.h-m && p.y+p.h-m>o.y+m) {
             if(state.shieldActive) { 
-              state.shieldActive = false; 
-              shieldCounter.style.display = 'none'; // ✅ Se oculta al romperse
+              state.shieldActive = false; shieldCounter.style.display = 'none';
               audio.playShieldBreak(); createExplosion(p.x+p.w/2, p.y+p.h/2);
               state.obstacles.splice(i, 1); if(navigator.vibrate) navigator.vibrate(50); continue; 
             }
@@ -924,8 +973,7 @@
       state.score=0; state.speed=state.baseSpeed; state.obstacles=[]; state.particles=[]; state.snow=[]; state.oilSpills=[]; state.ambulances=[]; state.shieldPickups=[]; state.tripleShotPickups=[]; state.projectiles=[];
       state.running=true; state.exploding=false; state.paused=false; state.onOil=false; state.oilVibration=0; state.oilTimer=0;
       state.lastAmbulanceDist = -1300; state.lastShieldDist = -400; state.lastTripleShotDist = -1200;
-      state.shieldActive = false; 
-      state.tripleShotActive = false; state.tripleShotTimer = 0; state.tripleShotCooldown = 0;
+      state.shieldActive = false; state.tripleShotActive = false; state.tripleShotTimer = 0; state.tripleShotCooldown = 0;
       state.pendingTripleShotSpawn = false; state.tripleShotSpawned = false; state.displayRPM = 0;
       shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none'; pausePanel.style.display = 'none';
       state.nightMode=false; state.lastNightDist=0; els.nightBadge.style.display='none';
