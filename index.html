@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -75,7 +76,6 @@
     #tripleShotCounter .tripleTime { font-size:18px; font-weight:bold; color:#fff; text-shadow:0 0 8px rgba(255,102,0,0.8); }
     #tripleShotCounter .tripleLabel { font-size:9px; color:#ff9944; text-transform:uppercase; letter-spacing:1px; }
     
-    /* 🖥️ CONTROLES DESKTOP */
     #desktopControls {
       position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
       background:rgba(0,0,0,0.7); border:1px solid #444; border-radius:8px;
@@ -84,7 +84,6 @@
     }
     #desktopControls span { color:#00ffff; margin:0 3px; font-weight:bold; }
     
-    /* 🖥️ BOTÓN PANTALLA COMPLETA */
     #fullscreenBtn {
       position:absolute; top:env(safe-area-inset-top, 28px); right:10px;
       background:rgba(0,0,0,0.6); border:1px solid #666; border-radius:6px;
@@ -93,7 +92,6 @@
     }
     #fullscreenBtn:hover { background:rgba(50,50,50,0.8); border-color:#00ffff; }
     
-    /* ⏸️ PANEL DE PAUSA */
     #pausePanel {
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
       background:rgba(8,8,12,0.95); border:2px solid #00ccff; border-radius:16px;
@@ -166,7 +164,7 @@
 </head>
 <body>
   <div id="titleScreen">
-    <img src="cover.png" alt="F1 Night Run" class="titleImage" onerror="this.style.display='none'">
+    <img src="cover.jpg" alt="F1 Night Run" class="titleImage" onerror="this.style.display='none'">
     <div class="titleOverlay"></div>
     <div class="titleContent">
       <h1 class="titleLogo">F1 NIGHT RUN</h1>
@@ -190,7 +188,6 @@
     <br>
     <button id="startBtn" class="btn hidden">🏁 ARRANCAR</button>
     
-    <!-- 🖥️ BOTÓN PANTALLA COMPLETA -->
     <button id="fullscreenBtn">🖥️ Pantalla Completa</button>
     
     <div id="shieldCounter">
@@ -205,7 +202,6 @@
       <div class="tripleLabel">DISPARO</div>
     </div>
     
-    <!-- ⏸️ PANEL DE PAUSA -->
     <div id="pausePanel">
       <h2>⏸️ PAUSA</h2>
       <p>Presiona <span style="color:#00ffff">P</span> o <span style="color:#00ffff">ESPACIO</span> para continuar</p>
@@ -220,7 +216,6 @@
     </div>
   </div>
 
-  <!-- 🖥️ INDICADOR DE CONTROLES DESKTOP -->
   <div id="desktopControls">
     ← → o <span>A</span> <span>D</span> para mover | <span>P</span> para pausar | <span>F</span> pantalla completa
   </div>
@@ -235,9 +230,45 @@
   <script>
     const lerp = (a, b, t) => a + (b - a) * t;
     
-    // 🔹 DETECTAR DISPOSITIVO
+    // ========================================
+    // 🖼️ SISTEMA DE IMÁGENES DE COCHES
+    // ========================================
+    
+    // 1. Imagen del jugador (jugador1.png)
+    const playerImg = new Image();
+    playerImg.src = 'jugador1.png';
+    let playerImgLoaded = false;
+    playerImg.onload = () => { playerImgLoaded = true; };
+    playerImg.onerror = () => { playerImgLoaded = false; };
+    
+    // 2. Array de imágenes de coches rivales
+    // AQUÍ ESTÁN LOS COCHES 2, 3, 4, 5 Y 6 PREPARADOS
+    const enemyImages = [];
+    const enemyImageFiles = [
+      'coche2.png',  // Rival tipo 0
+      'coche3.png',  // Rival tipo 1
+      'coche4.png',  // Rival tipo 2
+      'coche5.png',  // Rival tipo 3
+      'coche6.png'   // Rival tipo 4
+    ];
+    const enemyImagesLoaded = []; // Array para saber qué imágenes están cargadas
+    
+    // Cargar cada imagen rival automáticamente
+    enemyImageFiles.forEach((file, index) => {
+      const img = new Image();
+      img.src = file;
+      enemyImages.push(img);
+      enemyImagesLoaded.push(false);
+      
+      img.onload = () => { enemyImagesLoaded[index] = true; };
+      img.onerror = () => { enemyImagesLoaded[index] = false; };
+    });
+    
     const isDesktop = window.innerWidth >= 768;
     
+    // ========================================
+    // 🔊 SISTEMA DE AUDIO
+    // ========================================
     const audio = {
       ctx: null, engine: { osc: null, gain: null, filter: null, active: false },
       music: { playing: false, nextTime: 0, beat: 0, timer: null },
@@ -450,7 +481,6 @@
     els.lastScore.textContent = `Últ: ${state.lastScore}m`;
     els.highScore.textContent = `🏆 ${state.highScore}m`;
 
-    // 🖥️ Mostrar controles desktop si es PC/Mac
     if (isDesktop) {
       desktopControls.style.display = 'block';
       fullscreenBtn.style.display = 'block';
@@ -472,7 +502,6 @@
     }
     window.addEventListener('resize', resize); resize();
 
-    // 👆 CONTROLES TÁCTILES (Móvil)
     let drag=false, dOff=0;
     canvas.addEventListener('touchstart', e=>{ 
       e.preventDefault(); if(!state.running || state.paused) return; 
@@ -486,7 +515,6 @@
     canvas.addEventListener('touchend', ()=>drag=false); 
     canvas.addEventListener('touchcancel', ()=>drag=false);
 
-    // 🖱️ CONTROLES RATÓN (Desktop)
     canvas.addEventListener('mousedown', e=>{
       if(!state.running || state.paused) return;
       dOff = e.clientX - state.player.x;
@@ -500,11 +528,9 @@
     canvas.addEventListener('mouseup', ()=>drag=false);
     canvas.addEventListener('mouseleave', ()=>drag=false);
 
-    // ⌨️ CONTROLES TECLADO (Flechas + WASD + Pausa + Fullscreen)
     let keys = { left: false, right: false };
     window.addEventListener('keydown', (e) => {
       if (!state.running) {
-        // Permitir iniciar con Enter o Espacio en pantalla de título
         if ((e.key === 'Enter' || e.key === ' ') && titleScreen.classList.contains('hidden') === false) {
           e.preventDefault();
           startGame();
@@ -512,21 +538,18 @@
         return;
       }
       
-      // Pausa con P o Espacio
       if (e.key === 'p' || e.key === 'P' || e.key === ' ') {
         e.preventDefault();
         togglePause();
         return;
       }
       
-      // Pantalla completa con F
       if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
         toggleFullscreen();
         return;
       }
       
-      // Movimiento: Flechas o WASD
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { keys.left = true; e.preventDefault(); }
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { keys.right = true; e.preventDefault(); }
     });
@@ -536,7 +559,6 @@
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
     });
 
-    // ⏸️ Función de pausa
     function togglePause() {
       if (!state.running) return;
       state.paused = !state.paused;
@@ -548,13 +570,12 @@
         pausePanel.style.display = 'none';
         if (audio.ctx && audio.ctx.state !== 'running') audio.ctx.resume();
         audio.startMusic();
-        loop(); // Reiniciar el loop
+        loop();
       }
     }
     
     els.resumeBtn.addEventListener('click', () => togglePause());
 
-    // 🖥️ Pantalla completa
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(err => {
@@ -567,18 +588,110 @@
     
     fullscreenBtn.addEventListener('click', toggleFullscreen);
     
-    // Escuchar cambios de pantalla completa para actualizar el botón
     document.addEventListener('fullscreenchange', () => {
       fullscreenBtn.textContent = document.fullscreenElement ? '🔲 Salir' : '🖥️ Pantalla Completa';
     });
 
-    function drawF1(x,y,w,h,col) {
-      ctx.save(); ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(x+3,y+4,w,h);
-      ctx.fillStyle='#111'; ctx.fillRect(x-4,y+12,5,14); ctx.fillRect(x+w-1,y+12,5,14); ctx.fillRect(x-4,y+h-26,8,22); ctx.fillRect(x+w-4,y+h-26,8,22);
-      ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(x+w*0.4,y); ctx.lineTo(x+w*0.6,y); ctx.lineTo(x+w*0.7,y+h*0.25); ctx.lineTo(x+w,y+h*0.35); ctx.lineTo(x+w,y+h*0.75); ctx.lineTo(x+w*0.7,y+h); ctx.lineTo(x+w*0.3,y+h); ctx.lineTo(x,y+h*0.75); ctx.lineTo(x,y+h*0.35); ctx.lineTo(x+w*0.3,y+h*0.25); ctx.fill();
-      ctx.fillStyle='#fff'; ctx.fillRect(x+w*0.15,y+h-10,w*0.7,6); ctx.fillRect(x+w*0.15,y+h*0.1,w*0.7,4);
-      ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(x+w/2,y+h*0.5,w*0.18,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#ffff00'; ctx.beginPath(); ctx.arc(x+w/2,y+h*0.45,w*0.1,0,Math.PI*2); ctx.fill(); ctx.restore();
+    // ========================================
+    // 🖼️ FUNCIÓN PARA DIBUJAR COCHES
+    // ========================================
+    function drawF1(x, y, w, h, col, isEnemy = false, enemyType = -1) {
+      ctx.save();
+      
+      // Sombra para dar profundidad
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath();
+      ctx.ellipse(x + w/2, y + h - 5, w * 0.45, h * 0.15, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      let img, imgLoaded;
+      
+      if (isEnemy) {
+        // ========================================
+        // 🚗 LÓGICA DE IMÁGENES RIVALES
+        // ========================================
+        // Si se pasa un enemyType válido y esa imagen está cargada, usarla
+        if (enemyType >= 0 && enemyType < enemyImages.length && enemyImagesLoaded[enemyType]) {
+          img = enemyImages[enemyType];
+          imgLoaded = true;
+        } else {
+          // Fallback: usar la primera imagen cargada, o dibujar vectorial
+          let foundImage = false;
+          for (let i = 0; i < enemyImages.length; i++) {
+            if (enemyImagesLoaded[i]) {
+              img = enemyImages[i];
+              imgLoaded = true;
+              foundImage = true;
+              break;
+            }
+          }
+          if (!foundImage) {
+            imgLoaded = false;
+          }
+        }
+      } else {
+        // Imagen del jugador
+        img = playerImg;
+        imgLoaded = playerImgLoaded;
+      }
+      
+      // Si la imagen está cargada, usarla
+      if (imgLoaded && img && img.complete) {
+        // Calcular proporción para escalar manteniendo aspect ratio
+        const imgRatio = img.width / img.height;
+        const targetRatio = w / h;
+        
+        let drawW, drawH, drawX, drawY;
+        
+        if (imgRatio > targetRatio) {
+          drawW = w;
+          drawH = w / imgRatio;
+          drawX = x;
+          drawY = y + (h - drawH) / 2;
+        } else {
+          drawH = h;
+          drawW = h * imgRatio;
+          drawX = x + (w - drawW) / 2;
+          drawY = y;
+        }
+        
+        // Efecto de brillo/neón
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = isEnemy ? '#ff6600' : col;
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        ctx.shadowBlur = 0;
+      } else {
+        // ========================================
+        // 🎨 FALLBACK: DIBUJO VECTORIAL
+        // ========================================
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(x+w*0.4,y);
+        ctx.lineTo(x+w*0.6,y);
+        ctx.lineTo(x+w*0.7,y+h*0.25);
+        ctx.lineTo(x+w,y+h*0.35);
+        ctx.lineTo(x+w,y+h*0.75);
+        ctx.lineTo(x+w*0.7,y+h);
+        ctx.lineTo(x+w*0.3,y+h);
+        ctx.lineTo(x,y+h*0.75);
+        ctx.lineTo(x,y+h*0.35);
+        ctx.lineTo(x+w*0.3,y+h*0.25);
+        ctx.fill();
+        
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(x+w*0.15,y+h-10,w*0.7,6);
+        ctx.fillRect(x+w*0.15,y+h*0.1,w*0.7,4);
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(x+w/2,y+h*0.5,w*0.18,0,Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath();
+        ctx.arc(x+w/2,y+h*0.45,w*0.1,0,Math.PI*2);
+        ctx.fill();
+      }
+      
+      ctx.restore();
     }
 
     function drawTripleShotPickup(sp) {
@@ -623,12 +736,10 @@
       state.projectiles.forEach(p => {
         ctx.save();
         const trailLen = 40; 
-        
         let gradient = ctx.createLinearGradient(p.x, p.y, p.x, p.y - trailLen);
         gradient.addColorStop(0, 'rgba(255,200,50,0.9)');
         gradient.addColorStop(0.5, 'rgba(255,100,0,0.5)');
         gradient.addColorStop(1, 'rgba(255,50,0,0)');
-        
         ctx.fillStyle = gradient;
         ctx.fillRect(p.x - 2, p.y, 4, trailLen);
         ctx.fillStyle = '#ffcc00';
@@ -704,7 +815,6 @@
       state.snow.forEach(s => { ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
     }
 
-    // 📊 VELOCÍMETRO Y RPM
     function drawDashboard() {
       const cx = canvas.width - 70;
       const cy = canvas.height - 70;
@@ -857,7 +967,6 @@
 
     function update() {
       try {
-        // Si está en pausa, no actualizar lógica del juego
         if (state.paused) return;
         
         state.speed = state.baseSpeed + (state.score / 1200); 
@@ -943,7 +1052,6 @@
           if(state.oilTimer <= 0) { state.onOil = false; state.oilVibration = 0; els.oilBadge.style.display = 'none'; }
         }
 
-        // ⌨️ Entrada de teclado
         if (keys.left) state.player.targetX -= 8;
         if (keys.right) state.player.targetX += 8;
         state.player.targetX = Math.max(state.currentRoadX, Math.min(state.player.targetX, state.currentRoadX + state.currentRoadW - state.player.w));
@@ -985,6 +1093,9 @@
           audio.startAmbulanceSiren();
         }
 
+        // ========================================
+        // 🚗 SPAWN DE TRÁFICO CON TIPOS DE COCHE
+        // ========================================
         let lastY = state.obstacles.length > 0 ? state.obstacles[state.obstacles.length-1].y : 250;
         let spawnRate = 0.038 + (state.score / 18000); 
         if(state.nightMode) spawnRate += 0.025;
@@ -1006,7 +1117,29 @@
               let downSpeed = 4.5 + (Math.floor(d / 900) * 1.0);
               if (isFast) downSpeed *= 1.4;
               let col = isFast ? '#ff2200' : ['#00d2be','#061954','#ff8000','#ff87bc','#0090ff','#33ff33','#cccccc'][Math.floor(Math.random()*7)];
-              state.obstacles.push({ x:px, y:-state.player.h-50-(c*60), w:state.player.w, h:state.player.h, speed:downSpeed, c:col, passed:false });
+              
+              // ========================================
+              // 🎲 ASIGNAR TIPO DE COCHE ALEATORIO
+              // ========================================
+              // Buscar imágenes rivales que estén cargadas
+              const availableTypes = [];
+              enemyImagesLoaded.forEach((loaded, index) => {
+                if (loaded) availableTypes.push(index);
+              });
+              
+              // Si hay imágenes cargadas, elegir una al azar
+              let enemyType = -1; // -1 = usar fallback vectorial
+              if (availableTypes.length > 0) {
+                enemyType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+              }
+              
+              state.obstacles.push({ 
+                x:px, y:-state.player.h-50-(c*60), 
+                w:state.player.w, h:state.player.h, 
+                speed:downSpeed, c:col, 
+                passed:false,
+                enemyType: enemyType // ← ASIGNA EL TIPO DE IMAGEN
+              });
             }
           }
         }
@@ -1160,11 +1293,18 @@
         state.shieldPickups.forEach(sp => drawShieldPickup(sp));
         state.tripleShotPickups.forEach(sp => drawTripleShotPickup(sp));
         state.ambulances.forEach(amb => drawAmbulance(amb));
-        state.obstacles.forEach(o=>drawF1(o.x,o.y,o.w,o.h,o.c));
+        
+        // ========================================
+        // 🚗 DIBUJAR ENEMIGOS CON SU TIPO DE IMAGEN
+        // ========================================
+        state.obstacles.forEach(o => {
+          drawF1(o.x, o.y, o.w, o.h, o.c, true, o.enemyType);
+        });
         
         if(!state.exploding) {
           drawActiveShield();
-          drawF1(state.player.x,state.player.y,state.player.w,state.player.h,state.player.color);
+          // ✅ DIBUJAR JUGADOR CON IS_ENEMY = FALSE
+          drawF1(state.player.x, state.player.y, state.player.w, state.player.h, state.player.color, false, -1);
         }
         
         if(state.particles.length>0) {
@@ -1176,7 +1316,6 @@
         
         drawNightDarkness();
         
-        // 📊 DIBUJAR VELOCÍMETRO
         drawDashboard();
       } catch(e) { console.warn(e); }
     }
