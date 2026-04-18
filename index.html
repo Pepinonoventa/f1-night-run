@@ -200,12 +200,20 @@
     #savePlayerBtn { background:linear-gradient(to bottom, #00ccff, #0088cc); }
     #cancelPlayerBtn { background:linear-gradient(to bottom, #666, #444); }
 
-    /* 🏆 GAME OVER PANEL MEJORADO */
+    /* 🏆 GAME OVER PANEL - CENTRADO Y OPTIMIZADO PARA MÓVIL */
     #gameOverPanel {
-      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
       background: linear-gradient(135deg, rgba(8,8,12,0.98), rgba(20,10,20,0.98));
       border:2px solid #ff3333; border-radius:20px;
-      padding:20px; width:90%; max-width:360px; text-align:center; z-index:20; 
+      padding: clamp(15px, 4vw, 25px);
+      width: 85% !important;
+      max-width: 340px !important;
+      max-height: 85vh !important;
+      overflow-y: auto;
+      text-align:center; z-index: 1000 !important; 
       box-shadow:0 0 50px rgba(255,50,50,0.4), 0 0 100px rgba(255,50,50,0.2);
       animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
@@ -213,32 +221,32 @@
     
     #gameOverPanel h2 { 
       margin:0 0 5px 0; color:#ff3333; 
-      font-size: clamp(32px, 9vw, 48px); font-weight: 900; 
-      letter-spacing: 3px; text-transform: uppercase; 
+      font-size: clamp(28px, 8vw, 42px); font-weight: 900; 
+      letter-spacing: 2px; text-transform: uppercase; 
       text-shadow: 0 0 20px rgba(255,50,50,0.8); line-height:1;
     }
     
     /* 👤 NOMBRE DEL JUGADOR EN GAME OVER */
     #playerResultName {
-      margin:10px 0; padding:8px 16px;
+      margin:8px 0; padding:6px 12px;
       background: rgba(0,100,200,0.2); border:1px solid #00ccff; border-radius:10px;
       display:inline-block;
     }
-    #playerResultName .label { color:#66ccff; font-size:11px; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:2px; }
-    #playerResultName .name { color:#fff; font-size:20px; font-weight:bold; text-shadow:0 0 10px rgba(0,204,255,0.5); }
+    #playerResultName .label { color:#66ccff; font-size:10px; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:2px; }
+    #playerResultName .name { color:#fff; font-size: clamp(16px, 4.5vw, 20px); font-weight:bold; text-shadow:0 0 10px rgba(0,204,255,0.5); }
     
     #finalScore { 
-      font-size: clamp(50px, 14vw, 80px); font-weight: 900;
-      color: #ffffff; margin: 8px 0 15px 0; line-height: 1.1;
+      font-size: clamp(40px, 12vw, 65px); font-weight: 900;
+      color: #ffffff; margin: 5px 0 12px 0; line-height: 1.1;
       text-shadow: 0 0 20px rgba(255,255,255,0.3), 0 4px 12px rgba(0,0,0,0.8);
     }
     #finalScore span {
-      display: block; font-size: 0.3em; color: #888; font-weight: 600;
+      display: block; font-size: 0.28em; color: #888; font-weight: 600;
       letter-spacing: 2px; margin-bottom: 2px; text-transform: uppercase;
     }
     
-    .gameOver-buttons { display:flex; gap:8px; margin-top:10px; }
-    .gameOver-buttons .btn { flex:1; margin-top:0; font-size:12px; padding:10px 8px; }
+    .gameOver-buttons { display:flex; gap:8px; margin-top:8px; }
+    .gameOver-buttons .btn { flex:1; margin-top:0; font-size: clamp(11px, 3vw, 13px); padding:10px 8px; }
     #menuBtn { background:linear-gradient(to bottom, #666, #444) !important; }
 
     #warningPanel {
