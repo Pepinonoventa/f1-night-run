@@ -200,18 +200,46 @@
     #savePlayerBtn { background:linear-gradient(to bottom, #00ccff, #0088cc); }
     #cancelPlayerBtn { background:linear-gradient(to bottom, #666, #444); }
 
+    /* 🏆 GAME OVER PANEL MEJORADO */
     #gameOverPanel {
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-      background:rgba(8,8,12,0.98); border:2px solid #ff3333; border-radius:16px;
-      padding:24px 16px; width:90%; max-width:340px; text-align:center; z-index:20; 
-      box-shadow:0 0 40px rgba(255,50,50,0.3); animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      background: linear-gradient(135deg, rgba(8,8,12,0.98), rgba(20,10,20,0.98));
+      border:2px solid #ff3333; border-radius:20px;
+      padding:20px; width:90%; max-width:360px; text-align:center; z-index:20; 
+      box-shadow:0 0 50px rgba(255,50,50,0.4), 0 0 100px rgba(255,50,50,0.2);
+      animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     @keyframes popIn { from { transform:translate(-50%,-50%) scale(0.8); opacity:0; } to { transform:translate(-50%,-50%) scale(1); opacity:1; } }
-    #gameOverPanel h2 { margin:0 0 8px 0; color:#ff3333; font-size: clamp(40px, 10vw, 56px); font-weight: 900; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 0 15px rgba(255,50,50,0.6); line-height:1; }
-    #finalScore { font-size: clamp(48px, 12vw, 72px); font-weight: 900; color: #ffffff; margin: 5px 0 20px 0; line-height: 1.1; text-shadow: 0 4px 12px rgba(0,0,0,0.8); }
-    #finalScore span { display: block; font-size: 0.35em; color: #888; font-weight: 600; letter-spacing: 2px; margin-bottom: 2px; text-transform: uppercase; }
-    #playerResultName { color:#00ccff; font-size:18px; margin-bottom:10px; }
-    #playerResultName span { color:#fff; font-weight:bold; }
+    
+    #gameOverPanel h2 { 
+      margin:0 0 5px 0; color:#ff3333; 
+      font-size: clamp(32px, 9vw, 48px); font-weight: 900; 
+      letter-spacing: 3px; text-transform: uppercase; 
+      text-shadow: 0 0 20px rgba(255,50,50,0.8); line-height:1;
+    }
+    
+    /* 👤 NOMBRE DEL JUGADOR EN GAME OVER */
+    #playerResultName {
+      margin:10px 0; padding:8px 16px;
+      background: rgba(0,100,200,0.2); border:1px solid #00ccff; border-radius:10px;
+      display:inline-block;
+    }
+    #playerResultName .label { color:#66ccff; font-size:11px; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:2px; }
+    #playerResultName .name { color:#fff; font-size:20px; font-weight:bold; text-shadow:0 0 10px rgba(0,204,255,0.5); }
+    
+    #finalScore { 
+      font-size: clamp(50px, 14vw, 80px); font-weight: 900;
+      color: #ffffff; margin: 8px 0 15px 0; line-height: 1.1;
+      text-shadow: 0 0 20px rgba(255,255,255,0.3), 0 4px 12px rgba(0,0,0,0.8);
+    }
+    #finalScore span {
+      display: block; font-size: 0.3em; color: #888; font-weight: 600;
+      letter-spacing: 2px; margin-bottom: 2px; text-transform: uppercase;
+    }
+    
+    .gameOver-buttons { display:flex; gap:8px; margin-top:10px; }
+    .gameOver-buttons .btn { flex:1; margin-top:0; font-size:12px; padding:10px 8px; }
+    #menuBtn { background:linear-gradient(to bottom, #666, #444) !important; }
 
     #warningPanel {
       position:absolute; top:38%; left:50%; transform:translate(-50%,-50%);
@@ -315,10 +343,15 @@
     
     <div id="gameOverPanel" class="hidden">
       <h2>GAME OVER</h2>
-      <div id="playerResultName"></div>
+      <div id="playerResultName">
+        <span class="label">JUGADOR</span>
+        <span class="name" id="playerGameOverName">-</span>
+      </div>
       <p id="finalScore"><span>DISTANCIA</span>0m</p>
-      <button id="restartBtn" class="btn">🔄 REINICIAR</button>
-      <button id="menuBtn" class="btn" style="background:linear-gradient(to bottom, #666, #444); margin-top:8px;">🏠 MENÚ</button>
+      <div class="gameOver-buttons">
+        <button id="restartBtn" class="btn">🔄 REINICIAR</button>
+        <button id="menuBtn" class="btn">🏠 MENÚ</button>
+      </div>
     </div>
   </div>
 
@@ -347,7 +380,7 @@
     const savePlayerBtn = document.getElementById('savePlayerBtn');
     const cancelPlayerBtn = document.getElementById('cancelPlayerBtn');
     const playerNameUI = document.getElementById('playerNameUI');
-    const playerResultName = document.getElementById('playerResultName');
+    const playerGameOverName = document.getElementById('playerGameOverName');
     
     let playerName = localStorage.getItem('f1_player') || 'Jugador';
     
@@ -356,7 +389,7 @@
       playerNameUI.textContent = playerName;
       playerNameUI.style.display = 'block';
       // Pantalla de Game Over
-      playerResultName.innerHTML = `Jugador: <span>${playerName}</span>`;
+      playerGameOverName.textContent = playerName;
     }
     updatePlayerDisplay();
 
