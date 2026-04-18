@@ -1148,10 +1148,39 @@
     els.restartBtn.addEventListener('click', () => { els.gameOver.classList.add('hidden'); startGame(); });
     els.menuBtn.addEventListener('click', () => { els.gameOver.classList.add('hidden'); showTitleScreen(); });
     
-    // 👇 INTEGRACIÓN TELEGRAM: Función para enviar puntuación
+    // 👇 INTEGRACIÓN TELEGRAM: Función con diagnóstico
     function enviarScoreTelegram(puntos) {
+      const score = Math.floor(puntos);
+      if (score <= 0) {
+        console.warn('⚠️ Score <= 0. Telegram ignora puntuaciones de 0.');
+        return;
+      }
+      
       if (typeof Telegram !== 'undefined' && Telegram.Game) {
-        Telegram.Game.setScore(Math.floor(puntos), false);
+        Telegram.Game.setScore(score, false, function(error) {
+          if (error) {
+            console.error('❌ Error Telegram:', error);
+            const msg = document.createElement('div');
+            msg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,0,0,0.9);color:#fff;padding:15px;border-radius:10px;z-index:9999;font-size:14px;text-align:center;';
+            msg.textContent = '❌ Error al guardar score:\n' + JSON.stringify(error);
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 5000);
+          } else {
+            console.log('✅ Score enviado correctamente:', score);
+            const msg = document.createElement('div');
+            msg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,200,0,0.9);color:#fff;padding:15px;border-radius:10px;z-index:9999;font-size:14px;';
+            msg.textContent = '✅ ¡Puntuación enviada! (' + score + 'm)';
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 2000);
+          }
+        });
+      } else {
+        console.warn('⚠️ Telegram SDK NO detectado. ¿Juegas desde el enlace del bot en Telegram?');
+        const msg = document.createElement('div');
+        msg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,165,0,0.9);color:#fff;padding:15px;border-radius:10px;z-index:9999;font-size:14px;text-align:center;';
+        msg.textContent = '⚠️ SDK Telegram no cargado.\nJuega SOLO desde el mensaje del bot en Telegram.';
+        document.body.appendChild(msg);
+        setTimeout(() => msg.remove(), 5000);
       }
     }
     
