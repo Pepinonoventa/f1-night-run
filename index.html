@@ -2,6 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <!-- 👇 INTEGRACIÓN TELEGRAM: SDK oficial -->
+  <script src="https://telegram.org/js/games.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1094,6 +1096,9 @@
       els.finalScore.innerHTML = `<span>DISTANCIA</span>${d}m`; 
       els.gameOver.classList.remove('hidden'); 
       warningPanel.style.display = 'none'; 
+      
+      // 👇 INTEGRACIÓN TELEGRAM: Enviar score al finalizar
+      enviarScoreTelegram(d);
     }
 
     function draw() {
@@ -1142,6 +1147,14 @@
     els.titleStartBtn.addEventListener('click', startGame);
     els.restartBtn.addEventListener('click', () => { els.gameOver.classList.add('hidden'); startGame(); });
     els.menuBtn.addEventListener('click', () => { els.gameOver.classList.add('hidden'); showTitleScreen(); });
+    
+    // 👇 INTEGRACIÓN TELEGRAM: Función para enviar puntuación
+    function enviarScoreTelegram(puntos) {
+      if (typeof Telegram !== 'undefined' && Telegram.Game) {
+        Telegram.Game.setScore(Math.floor(puntos), false);
+      }
+    }
+    
     resize(); draw();
   </script>
 </body>
