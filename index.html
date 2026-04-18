@@ -141,7 +141,7 @@
     .titleBtn:active { transform: scale(0.98); }
     .titleInstructions { margin-top: 30px; font-size: 12px; color: rgba(255,255,255,0.7); letter-spacing: 1px; }
 
-    /* 📖 PANTALLA DE INSTRUCCIONES */
+    /* 📖 INSTRUCCIONES */
     #instructionsOverlay {
       position:absolute; top:0; left:0; width:100%; height:100%;
       background:rgba(0,0,0,0.85); backdrop-filter:blur(4px);
@@ -172,7 +172,34 @@
     .inst-text h3 { color:#fff; font-size:14px; margin-bottom:3px; }
     .inst-text p { color:#aaa; font-size:12px; line-height:1.4; margin:0; }
     #closeInstructionsBtn { margin-top:15px; background:linear-gradient(to bottom, #00ccff, #0088cc); }
-    
+
+    /* 👤 MODAL DE JUGADOR */
+    #playerModal {
+      position:absolute; top:0; left:0; width:100%; height:100%;
+      background:rgba(0,0,0,0.85); backdrop-filter:blur(4px);
+      z-index:260; display:none; justify-content:center; align-items:center;
+    }
+    #playerModal.active { display:flex; }
+    .player-panel {
+      background:linear-gradient(135deg, #0a0a14, #141428);
+      border:2px solid #ff3333; border-radius:16px;
+      width:90%; max-width:350px; padding:25px; text-align:center;
+      box-shadow:0 0 30px rgba(255,51,51,0.3);
+    }
+    .player-panel h2 { color:#ff3333; margin-bottom:20px; font-size:22px; }
+    .player-input {
+      width:100%; padding:12px; background:rgba(255,255,255,0.1);
+      border:2px solid #ff3333; border-radius:10px; color:#fff;
+      font-size:16px; text-align:center; outline:none;
+      margin-bottom:15px; font-family:system-ui;
+    }
+    .player-input::placeholder { color:rgba(255,255,255,0.4); }
+    .player-input:focus { border-color:#00ccff; box-shadow:0 0 10px rgba(0,204,255,0.3); }
+    .player-buttons { display:flex; gap:10px; }
+    .player-buttons .btn { flex:1; margin-top:0; }
+    #savePlayerBtn { background:linear-gradient(to bottom, #00ccff, #0088cc); }
+    #cancelPlayerBtn { background:linear-gradient(to bottom, #666, #444); }
+
     #gameOverPanel {
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
       background:rgba(8,8,12,0.98); border:2px solid #ff3333; border-radius:16px;
@@ -183,6 +210,8 @@
     #gameOverPanel h2 { margin:0 0 8px 0; color:#ff3333; font-size: clamp(40px, 10vw, 56px); font-weight: 900; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 0 15px rgba(255,50,50,0.6); line-height:1; }
     #finalScore { font-size: clamp(48px, 12vw, 72px); font-weight: 900; color: #ffffff; margin: 5px 0 20px 0; line-height: 1.1; text-shadow: 0 4px 12px rgba(0,0,0,0.8); }
     #finalScore span { display: block; font-size: 0.35em; color: #888; font-weight: 600; letter-spacing: 2px; margin-bottom: 2px; text-transform: uppercase; }
+    #playerResultName { color:#00ccff; font-size:18px; margin-bottom:10px; }
+    #playerResultName span { color:#fff; font-weight:bold; }
 
     #warningPanel {
       position:absolute; top:38%; left:50%; transform:translate(-50%,-50%);
@@ -192,6 +221,15 @@
     #warningPanel h2 { color:#fff; font-size:18px; margin:0; text-transform:uppercase; }
     #warningPanel p { color:#fff; font-size:12px; margin-top:4px; font-weight:bold; }
     @keyframes shake { 0% { transform:translate(-50%,-50%) rotate(0deg); } 25% { transform:translate(-52%,-50%) rotate(-3deg); } 75% { transform:translate(-48%,-50%) rotate(3deg); } 100% { transform:translate(-50%,-50%) rotate(0deg); } }
+
+    /* 👤 NOMBRE DEL JUGADOR EN UI */
+    #playerNameUI {
+      position:absolute; top:env(safe-area-inset-top, 55px); left:10px;
+      background:rgba(0,100,200,0.6); border:1px solid #00ccff; border-radius:8px;
+      padding:4px 10px; font-size:12px; color:#00ccff; z-index:12;
+      display:none; pointer-events:none;
+    }
+    #playerNameUI::before { content:'👤 '; }
   </style>
 </head>
 <body>
@@ -202,8 +240,21 @@
       <h1 class="titleLogo">F1 NIGHT RUN</h1>
       <p class="titleSubtitle">🏎️ Carrera Nocturna Extrema 🧊</p>
       <button id="titleStartBtn" class="titleBtn">🏁 INICIAR CARRERA</button>
-      <button id="instructionsBtn" class="titleBtn" style="background:linear-gradient(to bottom, #00ccff, #0088cc); margin-top:15px;">📖 INSTRUCCIONES</button>
+      <button id="playerNameBtn" class="titleBtn" style="background:linear-gradient(to bottom, #00ccff, #0088cc); margin-top:12px;">👤 JUGADOR</button>
+      <button id="instructionsBtn" class="titleBtn" style="background:linear-gradient(to bottom, #66ccff, #0066cc); margin-top:12px;">📖 INSTRUCCIONES</button>
       <p class="titleInstructions">👆 Arrastra o usa ← → / A D para moverte</p>
+    </div>
+  </div>
+
+  <!-- 👤 MODAL DE JUGADOR -->
+  <div id="playerModal">
+    <div class="player-panel">
+      <h2>👤 TU NOMBRE</h2>
+      <input type="text" id="playerInput" class="player-input" placeholder="Ingresa tu nombre..." maxlength="15">
+      <div class="player-buttons">
+        <button id="savePlayerBtn" class="btn">💾 GUARDAR</button>
+        <button id="cancelPlayerBtn" class="btn">❌ CANCELAR</button>
+      </div>
     </div>
   </div>
 
@@ -228,6 +279,7 @@
 
   <div id="ui" class="hidden">
     <h1 id="title">F1 NIGHT RUN</h1>
+    <div id="playerNameUI"></div>
     <div id="scoreBoard">
       <span id="score">0 m</span> |
       <span id="lastScore" style="color:#aaa;">Últ: 0m</span> |
@@ -263,6 +315,7 @@
     
     <div id="gameOverPanel" class="hidden">
       <h2>GAME OVER</h2>
+      <div id="playerResultName"></div>
       <p id="finalScore"><span>DISTANCIA</span>0m</p>
       <button id="restartBtn" class="btn">🔄 REINICIAR</button>
       <button id="menuBtn" class="btn" style="background:linear-gradient(to bottom, #666, #444); margin-top:8px;">🏠 MENÚ</button>
@@ -286,6 +339,60 @@
     const lerp = (a, b, t) => a + (b - a) * t;
     
     const bgMusic = document.getElementById('bgMusic');
+
+    // 👤 SISTEMA DE NOMBRE DE JUGADOR
+    const playerModal = document.getElementById('playerModal');
+    const playerInput = document.getElementById('playerInput');
+    const playerNameBtn = document.getElementById('playerNameBtn');
+    const savePlayerBtn = document.getElementById('savePlayerBtn');
+    const cancelPlayerBtn = document.getElementById('cancelPlayerBtn');
+    const playerNameUI = document.getElementById('playerNameUI');
+    const playerResultName = document.getElementById('playerResultName');
+    
+    let playerName = localStorage.getItem('f1_player') || 'Jugador';
+    
+    function updatePlayerDisplay() {
+      // UI durante el juego
+      playerNameUI.textContent = playerName;
+      playerNameUI.style.display = 'block';
+      // Pantalla de Game Over
+      playerResultName.innerHTML = `Jugador: <span>${playerName}</span>`;
+    }
+    updatePlayerDisplay();
+
+    // Abrir modal
+    playerNameBtn.addEventListener('click', () => {
+      playerInput.value = playerName === 'Jugador' ? '' : playerName;
+      playerModal.classList.add('active');
+      setTimeout(() => playerInput.focus(), 100);
+    });
+    
+    // Guardar nombre
+    savePlayerBtn.addEventListener('click', () => {
+      const name = playerInput.value.trim();
+      if(name) {
+        playerName = name.substring(0, 15);
+        localStorage.setItem('f1_player', playerName);
+        updatePlayerDisplay();
+      }
+      playerModal.classList.remove('active');
+    });
+    
+    // Cancelar
+    cancelPlayerBtn.addEventListener('click', () => {
+      playerModal.classList.remove('active');
+    });
+    
+    // Enter para guardar
+    playerInput.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') savePlayerBtn.click();
+      if(e.key === 'Escape') cancelPlayerBtn.click();
+    });
+    
+    // Cerrar al tocar fuera
+    playerModal.addEventListener('click', (e) => {
+      if(e.target === playerModal) playerModal.classList.remove('active');
+    });
 
     const playerImg = new Image();
     playerImg.src = 'jugador1.png';
@@ -983,7 +1090,13 @@
       els.gameOver.classList.add('hidden'); warningPanel.style.display = 'none';
       resize(); state.player.x = state.currentRoadX + state.currentRoadW/2 - state.player.w/2; state.player.targetX = state.player.x; loop();
     }
-    function showTitleScreen() { titleScreen.classList.remove('hidden'); ui.classList.add('hidden'); state.running = false; state.paused = false; pausePanel.style.display = 'none'; audio.stopMusic(); audio.stopEngine(); audio.stopAmbulanceSiren(); bgMusic.pause(); bgMusic.currentTime = 0; shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none'; }
+    function showTitleScreen() { 
+      titleScreen.classList.remove('hidden'); ui.classList.add('hidden'); 
+      state.running = false; state.paused = false; pausePanel.style.display = 'none'; 
+      audio.stopMusic(); audio.stopEngine(); audio.stopAmbulanceSiren(); 
+      bgMusic.pause(); bgMusic.currentTime = 0; 
+      shieldCounter.style.display = 'none'; tripleShotCounter.style.display = 'none'; 
+    }
 
     els.titleStartBtn.addEventListener('click', startGame);
     els.restartBtn.addEventListener('click', () => { els.gameOver.classList.add('hidden'); startGame(); });
