@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -200,7 +201,53 @@
     #savePlayerBtn { background:linear-gradient(to bottom, #00ccff, #0088cc); }
     #cancelPlayerBtn { background:linear-gradient(to bottom, #666, #444); }
 
-    /* 🏆 GAME OVER PANEL - CENTRADO Y OPTIMIZADO PARA MÓVIL */
+    /* 🏆 PANEL DE RANKING */
+    #rankingOverlay {
+      position:absolute; top:0; left:0; width:100%; height:100%;
+      background:rgba(0,0,0,0.9); backdrop-filter:blur(4px);
+      z-index:270; display:none; justify-content:center; align-items:center;
+    }
+    #rankingOverlay.active { display:flex; }
+    .ranking-panel {
+      background:linear-gradient(135deg, #0a0a14, #141428);
+      border:2px solid #ffd700; border-radius:16px;
+      width:90%; max-width:420px; max-height:85vh;
+      padding:20px; text-align:center; position:relative;
+      box-shadow:0 0 30px rgba(255,215,0,0.3);
+    }
+    .ranking-panel h2 { color:#ffd700; margin-bottom:15px; font-size:24px; text-transform:uppercase; }
+    .ranking-list {
+      max-height:50vh; overflow-y:auto; text-align:left; padding-right:5px;
+      scrollbar-width:thin; scrollbar-color:#ffd700 #0a0a14;
+    }
+    .ranking-list::-webkit-scrollbar { width:6px; }
+    .ranking-list::-webkit-scrollbar-track { background:#0a0a14; border-radius:3px; }
+    .ranking-list::-webkit-scrollbar-thumb { background:#ffd700; border-radius:3px; }
+    .rank-item {
+      display:flex; align-items:center; gap:10px; padding:10px;
+      background:rgba(255,255,255,0.03); border-radius:8px;
+      margin-bottom:6px; transition:background 0.2s;
+    }
+    .rank-item:hover { background:rgba(255,215,0,0.1); }
+    .rank-item.top1 { border-left:3px solid #ffd700; background:rgba(255,215,0,0.08); }
+    .rank-item.top2 { border-left:3px solid #c0c0c0; background:rgba(192,192,192,0.08); }
+    .rank-item.top3 { border-left:3px solid #cd7f32; background:rgba(205,127,50,0.08); }
+    .rank-num {
+      font-size:20px; font-weight:bold; width:35px; text-align:center;
+      color:#888;
+    }
+    .rank-item.top1 .rank-num { color:#ffd700; }
+    .rank-item.top2 .rank-num { color:#c0c0c0; }
+    .rank-item.top3 .rank-num { color:#cd7f32; }
+    .rank-info { flex:1; }
+    .rank-name { color:#fff; font-size:15px; font-weight:bold; }
+    .rank-score { color:#ffd700; font-size:13px; font-weight:bold; }
+    .rank-empty {
+      color:#666; font-size:14px; padding:30px 10px;
+    }
+    #closeRankingBtn { margin-top:15px; background:linear-gradient(to bottom, #ffd700, #cc9900); color:#000; }
+
+    /* 🏆 GAME OVER PANEL */
     #gameOverPanel {
       position: fixed !important;
       top: 50% !important;
@@ -226,7 +273,6 @@
       text-shadow: 0 0 20px rgba(255,50,50,0.8); line-height:1;
     }
     
-    /* 👤 NOMBRE DEL JUGADOR EN GAME OVER */
     #playerResultName {
       margin:8px 0; padding:6px 12px;
       background: rgba(0,100,200,0.2); border:1px solid #00ccff; border-radius:10px;
@@ -245,9 +291,10 @@
       letter-spacing: 2px; margin-bottom: 2px; text-transform: uppercase;
     }
     
-    .gameOver-buttons { display:flex; gap:8px; margin-top:8px; }
-    .gameOver-buttons .btn { flex:1; margin-top:0; font-size: clamp(11px, 3vw, 13px); padding:10px 8px; }
+    .gameOver-buttons { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+    .gameOver-buttons .btn { flex:1; margin-top:0; font-size: clamp(11px, 3vw, 13px); padding:10px 8px; min-width:80px; }
     #menuBtn { background:linear-gradient(to bottom, #666, #444) !important; }
+    #viewRankingBtn { background:linear-gradient(to bottom, #ffd700, #cc9900) !important; color:#000; }
 
     #warningPanel {
       position:absolute; top:38%; left:50%; transform:translate(-50%,-50%);
@@ -276,9 +323,19 @@
       <h1 class="titleLogo">F1 NIGHT RUN</h1>
       <p class="titleSubtitle">🏎️ Carrera Nocturna Extrema 🧊</p>
       <button id="titleStartBtn" class="titleBtn">🏁 INICIAR CARRERA</button>
+      <button id="rankingBtn" class="titleBtn" style="background:linear-gradient(to bottom, #ffd700, #cc9900); margin-top:12px; color:#000;">🏆 RANKING</button>
       <button id="playerNameBtn" class="titleBtn" style="background:linear-gradient(to bottom, #00ccff, #0088cc); margin-top:12px;">👤 JUGADOR</button>
       <button id="instructionsBtn" class="titleBtn" style="background:linear-gradient(to bottom, #66ccff, #0066cc); margin-top:12px;">📖 INSTRUCCIONES</button>
       <p class="titleInstructions">👆 Arrastra o usa ← → / A D para moverte</p>
+    </div>
+  </div>
+
+  <!-- 🏆 OVERLAY DE RANKING -->
+  <div id="rankingOverlay">
+    <div class="ranking-panel">
+      <h2>🏆 TOP RANKING</h2>
+      <div id="rankingList" class="ranking-list"></div>
+      <button id="closeRankingBtn" class="btn">⬅️ VOLVER</button>
     </div>
   </div>
 
@@ -358,6 +415,7 @@
       <p id="finalScore"><span>DISTANCIA</span>0m</p>
       <div class="gameOver-buttons">
         <button id="restartBtn" class="btn">🔄 REINICIAR</button>
+        <button id="viewRankingBtn" class="btn">🏆 RANKING</button>
         <button id="menuBtn" class="btn">🏠 MENÚ</button>
       </div>
     </div>
@@ -381,6 +439,58 @@
     
     const bgMusic = document.getElementById('bgMusic');
 
+    // 🏆 SISTEMA DE RANKING
+    function getRanking() {
+      try {
+        return JSON.parse(localStorage.getItem('f1_ranking')) || [];
+      } catch(e) { return []; }
+    }
+    
+    function saveScoreToRanking(name, score) {
+      let ranking = getRanking();
+      ranking.push({ name: name, score: score, date: Date.now() });
+      ranking.sort((a, b) => b.score - a.score);
+      ranking = ranking.slice(0, 10); // Top 10
+      localStorage.setItem('f1_ranking', JSON.stringify(ranking));
+    }
+    
+    function renderRanking() {
+      const ranking = getRanking();
+      const listEl = document.getElementById('rankingList');
+      
+      if(ranking.length === 0) {
+        listEl.innerHTML = '<div class="rank-empty">🏁 ¡No hay récords todavía!<br>¡Sé el primero en la pista!</div>';
+        return;
+      }
+      
+      const medals = ['🥇', '🥈', '🥉'];
+      listEl.innerHTML = ranking.map((entry, i) => {
+        let topClass = '';
+        if(i === 0) topClass = 'top1';
+        else if(i === 1) topClass = 'top2';
+        else if(i === 2) topClass = 'top3';
+        
+        const medal = medals[i] || (i + 1) + '.';
+        const playerName = escapeHtml(entry.name);
+        
+        return `
+          <div class="rank-item ${topClass}">
+            <div class="rank-num">${medal}</div>
+            <div class="rank-info">
+              <div class="rank-name">${playerName}</div>
+              <div class="rank-score">${entry.score} m</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
     // 👤 SISTEMA DE NOMBRE DE JUGADOR
     const playerModal = document.getElementById('playerModal');
     const playerInput = document.getElementById('playerInput');
@@ -393,22 +503,18 @@
     let playerName = localStorage.getItem('f1_player') || 'Jugador';
     
     function updatePlayerDisplay() {
-      // UI durante el juego
       playerNameUI.textContent = playerName;
       playerNameUI.style.display = 'block';
-      // Pantalla de Game Over
       playerGameOverName.textContent = playerName;
     }
     updatePlayerDisplay();
 
-    // Abrir modal
     playerNameBtn.addEventListener('click', () => {
       playerInput.value = playerName === 'Jugador' ? '' : playerName;
       playerModal.classList.add('active');
       setTimeout(() => playerInput.focus(), 100);
     });
     
-    // Guardar nombre
     savePlayerBtn.addEventListener('click', () => {
       const name = playerInput.value.trim();
       if(name) {
@@ -419,21 +525,51 @@
       playerModal.classList.remove('active');
     });
     
-    // Cancelar
     cancelPlayerBtn.addEventListener('click', () => {
       playerModal.classList.remove('active');
     });
     
-    // Enter para guardar
     playerInput.addEventListener('keydown', (e) => {
       if(e.key === 'Enter') savePlayerBtn.click();
       if(e.key === 'Escape') cancelPlayerBtn.click();
     });
     
-    // Cerrar al tocar fuera
     playerModal.addEventListener('click', (e) => {
       if(e.target === playerModal) playerModal.classList.remove('active');
     });
+
+    // 🏆 LÓGICA DE RANKING
+    const rankingOverlay = document.getElementById('rankingOverlay');
+    const rankingBtn = document.getElementById('rankingBtn');
+    const closeRankingBtn = document.getElementById('closeRankingBtn');
+    const viewRankingBtn = document.getElementById('viewRankingBtn');
+    
+    rankingBtn.addEventListener('click', () => {
+      renderRanking();
+      rankingOverlay.classList.add('active');
+    });
+    
+    closeRankingBtn.addEventListener('click', () => {
+      rankingOverlay.classList.remove('active');
+    });
+    
+    viewRankingBtn.addEventListener('click', () => {
+      renderRanking();
+      rankingOverlay.classList.add('active');
+    });
+    
+    rankingOverlay.addEventListener('click', (e) => {
+      if(e.target === rankingOverlay) rankingOverlay.classList.remove('active');
+    });
+
+    // 📖 INSTRUCCIONES
+    const instructionsOverlay = document.getElementById('instructionsOverlay');
+    const instructionsBtn = document.getElementById('instructionsBtn');
+    const closeInstructionsBtn = document.getElementById('closeInstructionsBtn');
+    
+    instructionsBtn.addEventListener('click', () => { instructionsOverlay.classList.add('active'); });
+    closeInstructionsBtn.addEventListener('click', () => { instructionsOverlay.classList.remove('active'); });
+    instructionsOverlay.addEventListener('click', (e) => { if(e.target === instructionsOverlay) instructionsOverlay.classList.remove('active'); });
 
     const playerImg = new Image();
     playerImg.src = 'jugador1.png';
@@ -637,9 +773,6 @@
     const pausePanel = document.getElementById('pausePanel');
     const desktopControls = document.getElementById('desktopControls');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
-    const instructionsOverlay = document.getElementById('instructionsOverlay');
-    const instructionsBtn = document.getElementById('instructionsBtn');
-    const closeInstructionsBtn = document.getElementById('closeInstructionsBtn');
     
     const els = {
       titleStartBtn: document.getElementById('titleStartBtn'),
@@ -776,11 +909,6 @@
     }
     fullscreenBtn.addEventListener('click', toggleFullscreen);
     document.addEventListener('fullscreenchange', () => { fullscreenBtn.textContent = document.fullscreenElement ? '🔲 Salir' : '🖥️ Pantalla Completa'; });
-
-    // 📖 LÓGICA DE INSTRUCCIONES
-    instructionsBtn.addEventListener('click', () => { instructionsOverlay.classList.add('active'); });
-    closeInstructionsBtn.addEventListener('click', () => { instructionsOverlay.classList.remove('active'); });
-    instructionsOverlay.addEventListener('click', (e) => { if(e.target === instructionsOverlay) instructionsOverlay.classList.remove('active'); });
 
     function drawF1(x, y, w, h, col, isEnemy = false, enemyType = -1) {
       ctx.save();
@@ -1088,6 +1216,10 @@
     function gameOver() { 
       state.exploding=false; audio.stopEngine(); 
       let d=Math.floor(state.score); 
+      
+      // 🏆 Guardar puntuación en ranking
+      saveScoreToRanking(playerName, d);
+      
       state.lastScore = d; localStorage.setItem('f1_last', d); 
       els.lastScore.textContent = `Últ: ${d}m`; 
       if(d > state.highScore) { state.highScore=d; localStorage.setItem('f1_highscore',d); els.highScore.textContent=`🏆 ${d}m`; } 
