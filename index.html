@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -450,7 +449,7 @@
       let ranking = getRanking();
       ranking.push({ name: name, score: score, date: Date.now() });
       ranking.sort((a, b) => b.score - a.score);
-      ranking = ranking.slice(0, 10); // Top 10
+      ranking = ranking.slice(0, 10);
       localStorage.setItem('f1_ranking', JSON.stringify(ranking));
     }
     
@@ -1072,7 +1071,15 @@
     function update() {
       try {
         if (state.paused) return;
-        state.speed = state.baseSpeed + (state.score / 1200); state.roadOffset += state.speed; audio.updateEngine(state.speed);
+        
+        // 📈 PROGRESIÓN DE VELOCIDAD MEJORADA (Niveles)
+        const level = Math.floor(state.score / 2000);
+        state.speed = 6.5 + (level * 0.45);
+        state.speed = Math.min(state.speed, 13.5); // Tope máximo
+
+        state.roadOffset += state.speed; 
+        audio.updateEngine(state.speed);
+
         const d = Math.floor(state.score);
         
         if(!state.nightMode && d>=state.lastNightDist+2000) { state.nightMode=true; state.nightStart=Date.now(); state.lastNightDist=d; els.nightBadge.style.display='inline-block'; }
@@ -1131,7 +1138,11 @@
             while(!valid && attempts<15) { px = state.currentRoadX + 12 + Math.random() * (state.currentRoadW - state.player.w - 24); valid = placedX.every(x => Math.abs(px - x) > state.player.w * 0.85); attempts++; }
             if(valid) {
               placedX.push(px); let isFast = Math.random() < 0.18;
-              let downSpeed = 4.5 + (Math.floor(d / 900) * 1.0); if (isFast) downSpeed *= 1.4;
+              
+              // 🚗 VELOCIDAD DE TRÁFICO (Ajustada a niveles)
+              let downSpeed = 3.0 + (level * 0.35);
+              if (isFast) downSpeed *= 1.3;
+              
               let col = isFast ? '#ff2200' : ['#00d2be','#061954','#ff8000','#ff87bc','#0090ff','#33ff33','#cccccc'][Math.floor(Math.random()*7)];
               const availableTypes = []; enemyImagesLoaded.forEach((loaded, index) => { if (loaded) availableTypes.push(index); });
               let enemyType = -1; if (availableTypes.length > 0) { enemyType = availableTypes[Math.floor(Math.random() * availableTypes.length)]; }
@@ -1216,10 +1227,7 @@
     function gameOver() { 
       state.exploding=false; audio.stopEngine(); 
       let d=Math.floor(state.score); 
-      
-      // 🏆 Guardar puntuación en ranking
       saveScoreToRanking(playerName, d);
-      
       state.lastScore = d; localStorage.setItem('f1_last', d); 
       els.lastScore.textContent = `Últ: ${d}m`; 
       if(d > state.highScore) { state.highScore=d; localStorage.setItem('f1_highscore',d); els.highScore.textContent=`🏆 ${d}m`; } 
