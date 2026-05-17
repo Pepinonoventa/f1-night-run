@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -438,7 +439,7 @@
     
     const bgMusic = document.getElementById('bgMusic');
 
-    // 🏆 SISTEMA DE RANKING
+    // 🏆 SISTEMA DE RANKING MEJORADO
     function getRanking() {
       try {
         return JSON.parse(localStorage.getItem('f1_ranking')) || [];
@@ -447,9 +448,18 @@
     
     function saveScoreToRanking(name, score) {
       let ranking = getRanking();
+      
+      // 🧠 Lógica inteligente: Elimina entradas antiguas de este jugador
+      // para que solo aparezca su MEJOR puntuación en el ranking.
+      ranking = ranking.filter(entry => entry.name !== name);
+      
+      // Añade la nueva puntuación
       ranking.push({ name: name, score: score, date: Date.now() });
+      
+      // Ordena de mayor a menor y guarda solo el Top 10
       ranking.sort((a, b) => b.score - a.score);
       ranking = ranking.slice(0, 10);
+      
       localStorage.setItem('f1_ranking', JSON.stringify(ranking));
     }
     
@@ -462,7 +472,7 @@
         return;
       }
       
-      const medals = ['🥇', '🥈', '🥉'];
+      const medals = ['🥇', '', '🥉'];
       listEl.innerHTML = ranking.map((entry, i) => {
         let topClass = '';
         if(i === 0) topClass = 'top1';
